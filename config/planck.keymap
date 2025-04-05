@@ -1,6 +1,8 @@
 #include <behaviors.dtsi>
+#include <dt-bindings/zmk/bt.h>
 #include <dt-bindings/zmk/ext_power.h>
 #include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/rgb.h>
 
 // / {
 //     chosen {
@@ -9,10 +11,33 @@
 // };
 
 / {
+    behaviors {
+        brace: brace {
+            compatible = "zmk,behavior-tap-dance";
+            label = "BRACE";
+            #binding-cells = <0>;
+            bindings = <&kp LEFT_BRACE>, <&kp RIGHT_BRACE>;
+        };
+
+        bracket: bracket {
+            compatible = "zmk,behavior-tap-dance";
+            label = "BRACKET";
+            #binding-cells = <0>;
+            bindings = <&kp LEFT_BRACKET>, <&kp RIGHT_BRACKET>;
+        };
+
+        parenthesis: parenthesis {
+            compatible = "zmk,behavior-tap-dance";
+            label = "PARENTHESIS";
+            #binding-cells = <0>;
+            bindings = <&kp LEFT_PARENTHESIS>, <&kp RIGHT_PARENTHESIS>;
+        };
+    };
+
     keymap {
         compatible = "zmk,keymap";
 
-        default_layer {
+        LETTER {
             // --------------------------------------------------------------------------------------------------------------------------------------------------------------------
             // |   ESC   |    Q    |    W    |    E    |    R    |    T    |                                          |    Y    |    U    |    I    |    O    |    P    |    \    |
             // |   TAB   |    A    |    S    |    D    |    F    |    G    |                                          |    H    |    J    |    K    |    L    |    ;    |    '    |
@@ -20,13 +45,47 @@
             //                               |   GUI   |   DEL   | RETURN  |  SPACE  | ESCAPE  |  |  RETURN |  SPACE  |   TAB   |   BSPC  |  R ALT  |
 
             bindings = <
-&ext_power EP_TOG  &kp Q  &kp W     &kp E     &kp R    &kp T    &kp Y    &kp U     &kp I      &kp O     &kp P     &ext_power EP_TOG
-&kp A              &kp A  &kp S     &kp D     &kp F    &kp G    &kp H    &kp J     &kp K      &kp L     &kp SEMI  &kp SQT
-&kp A              &kp Z  &kp X     &kp C     &kp V    &kp B    &kp C    &kp M     &kp COMMA  &kp DOT   &kp FSLH  &kp RCTRL
-                          &kp LGUI  &kp LGUI  &kp DEL  &kp RET  &kp TAB  &kp BSPC  &kp RALT   &kp LGUI
+&kp ESC         &kp Q  &kp W      &kp E         &kp R             &kp T      &kp Y  &kp U  &kp I      &kp O          &kp P     &kp BACKSPACE
+&kp CAPSLOCK    &kp A  &kp S      &kp D         &kp F             &kp G      &kp H  &kp J  &kp K      &kp L          &kp SEMI  &kp RETURN
+&kp LEFT_SHIFT  &kp Z  &kp X      &kp C         &kp V             &kp B      &kp N  &kp M  &kp COMMA  &kp DOT        &kp FSLH  &kp NON_US_BACKSLASH
+                       &kp LCTRL  &kp LEFT_ALT  &kp LEFT_COMMAND  &kp SPACE  &mo 1  &mo 2  &kp RALT   &kp LC(LG(Q))
             >;
 
             sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN &inc_dec_kp PG_UP PG_DN>;
+            label = "LETTER";
+        };
+
+        CHAR {
+            bindings = <
+&kp ESC    &kp EXCLAMATION  &kp AT_SIGN  &kp HASH  &kp DOLLAR  &kp PERCENT   &kp LCTRL  &kp AMPERSAND  &kp ASTERISK  &kp LEFT_PARENTHESIS  &kp RIGHT_PARENTHESIS  &kp GRAVE
+&kp TAB    &kp N1           &kp N2       &kp N3    &kp N4      &kp N5        &kp N6     &kp N7         &kp N8        &kp N9                &kp N0                 &kp RET
+&kp LSHFT  &kp MINUS        &kp EQUAL    &brace    &bracket    &parenthesis  &kp COLON  &kp APOS       &kp COMMA     &kp DOT               &kp FSLH               &kp BSLH
+                            &trans       &trans    &trans      &trans        &trans     &trans         &trans        &trans
+            >;
+
+            label = "CHAR";
+        };
+
+        ARROW {
+            bindings = <
+&trans  &trans  &trans  &trans  &trans  &trans  &trans  &kp PAGE_UP  &kp UP_ARROW    &kp PAGE_DOWN  &kp HOME  &trans
+&trans  &trans  &trans  &trans  &trans  &trans  &trans  &kp LEFT     &kp DOWN_ARROW  &kp RIGHT      &kp END   &trans
+&trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans       &trans          &trans         &trans    &trans
+                &trans  &trans  &trans  &trans  &trans  &trans       &trans          &trans
+            >;
+
+            label = "ARROW";
+        };
+
+        BLE {
+            bindings = <
+&bt BT_SEL 0  &bt BT_DISC 0  &bt BT_PRV      &trans             &trans            &rgb_ug RGB_COLOR_HSB(296,100,68)  &rgb_ug RGB_EFR                 &rgb_ug RGB_SPI                   &rgb_ug RGB_BRI                    &rgb_ug RGB_SAI                    &rgb_ug RGB_HUI                    &rgb_ug RGB_TOG
+&bt BT_SEL 1  &bt BT_DISC 1  &bt BT_NXT      &trans             &trans            &rgb_ug RGB_COLOR_HSB(360,100,51)  &rgb_ug RGB_EFR                 &rgb_ug RGB_SPD                   &rgb_ug RGB_BRD                    &rgb_ug RGB_SAD                    &rgb_ug RGB_HUD                    &rgb_ug RGB_ON
+&bt BT_SEL 2  &bt BT_DISC 2  &bt BT_CLR      &trans             &trans            &trans                             &rgb_ug RGB_COLOR_HSB(0,0,100)  &rgb_ug RGB_COLOR_HSB(45,100,50)  &rgb_ug RGB_COLOR_HSB(114,100,51)  &rgb_ug RGB_COLOR_HSB(186,100,50)  &rgb_ug RGB_COLOR_HSB(261,100,50)  &rgb_ug RGB_OFF
+                             &bt BT_CLR_ALL  &ext_power EP_OFF  &ext_power EP_ON  &ext_power EP_TOG                  &trans                          &trans                            &trans                             &trans
+            >;
+
+            label = "BLE";
         };
     };
 };
