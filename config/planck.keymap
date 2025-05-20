@@ -94,10 +94,10 @@
             //                               |   GUI   |   DEL   | RETURN  |  SPACE  | ESCAPE  |  |  RETURN |  SPACE  |   TAB   |   BSPC  |  R ALT  |
 
             bindings = <
-&kp ESC         &kp Q  &kp W      &kp E         &kp R             &kp T      &kp Y  &kp U  &kp I      &kp O      &kp P     &kp BACKSPACE
-&kp CAPSLOCK    &kp A  &kp S      &kp D         &kp F             &kp G      &kp H  &kp J  &kp K      &kp L      &kp SEMI  &kp RETURN
-&kp LEFT_SHIFT  &kp Z  &kp X      &kp C         &kp V             &kp B      &kp N  &kp M  &kp COMMA  &kp DOT    &kp FSLH  &kp BACKSLASH
-                       &kp LCTRL  &kp LEFT_ALT  &kp LEFT_COMMAND  &kp SPACE  &mo 1  &mo 2  &kp RALT   &kp RCTRL
+&kp ESC         &kp Q  &kp W      &kp E         &kp R             &kp T      &kp Y  &kp U  &kp I      &kp O          &kp P     &kp BACKSPACE
+&kp CAPSLOCK    &kp A  &kp S      &kp D         &kp F             &kp G      &kp H  &kp J  &kp K      &kp L          &kp SEMI  &kp RETURN
+&kp LEFT_SHIFT  &kp Z  &kp X      &kp C         &kp V             &kp B      &kp N  &kp M  &kp COMMA  &kp DOT        &kp FSLH  &kp BACKSLASH
+                       &kp LCTRL  &kp LEFT_ALT  &kp LEFT_COMMAND  &kp SPACE  &mo 1  &mo 2  &kp RALT   &kp LC(LG(Q))
             >;
 
             sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN &inc_dec_kp PG_UP PG_DN>;
@@ -130,7 +130,7 @@
 &bt BT_SEL 0  &bt BT_DISC 0  &bt BT_PRV      &kp C_VOL_UP       &kp C_BRIGHTNESS_INC                    &rgb_ug RGB_COLOR_HSB(296,100,68)  &rgb_ug RGB_EFR                 &rgb_ug RGB_SPI                   &rgb_ug RGB_BRI                    &rgb_ug RGB_SAI                    &rgb_ug RGB_HUI                    &rgb_ug RGB_TOG
 &bt BT_SEL 1  &bt BT_DISC 1  &bt BT_NXT      &kp C_VOL_DN       &kp C_BRIGHTNESS_DEC                    &rgb_ug RGB_COLOR_HSB(360,100,51)  &rgb_ug RGB_EFR                 &rgb_ug RGB_SPD                   &rgb_ug RGB_BRD                    &rgb_ug RGB_SAD                    &rgb_ug RGB_HUD                    &rgb_ug RGB_ON
 &bt BT_SEL 2  &bt BT_DISC 2  &bt BT_CLR      &kp K_MUTE         &kp C_AC_DESKTOP_SHOW_ALL_APPLICATIONS  &trans                             &rgb_ug RGB_COLOR_HSB(0,0,100)  &rgb_ug RGB_COLOR_HSB(45,100,50)  &rgb_ug RGB_COLOR_HSB(114,100,51)  &rgb_ug RGB_COLOR_HSB(186,100,50)  &rgb_ug RGB_COLOR_HSB(261,100,50)  &rgb_ug RGB_OFF
-                             &bt BT_CLR_ALL  &ext_power EP_OFF  &ext_power EP_ON                        &ext_power EP_TOG                  &trans                          &trans                            &trans                             &kp LC(LG(Q))
+                             &bt BT_CLR_ALL  &ext_power EP_OFF  &ext_power EP_ON                        &ext_power EP_TOG                  &trans                          &trans                            &trans                             &none
             >;
 
             label = "BLE";
