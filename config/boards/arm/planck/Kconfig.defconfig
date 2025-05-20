@@ -6,7 +6,7 @@
 if BOARD_PLANCK_LEFT
 
 config ZMK_KEYBOARD_NAME
-		default "Planckeys"
+		default "Planckeys/CNC"
 
 config ZMK_SPLIT_ROLE_CENTRAL
 		default y
