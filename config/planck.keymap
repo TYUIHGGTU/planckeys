@@ -32,6 +32,16 @@
             #binding-cells = <0>;
             bindings = <&kp LEFT_PARENTHESIS>, <&kp RIGHT_PARENTHESIS>;
         };
+
+        space_cmd: space_cmd {
+            compatible = "zmk,behavior-hold-tap";
+            label = "SPACE_CMD";
+            #binding-cells = <2>;
+            tapping-term-ms = <150>;
+            bindings = <&kp>, <&kp>;
+
+            quick-tap-ms = <0>;
+        };
     };
 
     combos {
@@ -39,7 +49,7 @@
 
         tobt {
             bindings = <&mo 3>;
-            key-positions = <40 41>;
+            key-positions = <40 41 42>;
         };
 
         desk_l_up {
@@ -94,10 +104,10 @@
             //                               |   GUI   |   DEL   | RETURN  |  SPACE  | ESCAPE  |  |  RETURN |  SPACE  |   TAB   |   BSPC  |  R ALT  |
 
             bindings = <
-&kp ESC         &kp Q  &kp W      &kp E         &kp R             &kp T      &kp Y  &kp U  &kp I      &kp O          &kp P     &kp BACKSPACE
-&kp CAPSLOCK    &kp A  &kp S      &kp D         &kp F             &kp G      &kp H  &kp J  &kp K      &kp L          &kp SEMI  &kp RETURN
-&kp LEFT_SHIFT  &kp Z  &kp X      &kp C         &kp V             &kp B      &kp N  &kp M  &kp COMMA  &kp DOT        &kp FSLH  &kp BACKSLASH
-                       &kp LCTRL  &kp LEFT_ALT  &kp LEFT_COMMAND  &kp SPACE  &mo 1  &mo 2  &kp RALT   &kp LC(LG(Q))
+&kp ESC          &kp Q  &kp W      &kp E         &kp R             &kp T                          &kp Y  &kp U  &kp I      &kp O          &kp P     &kp BACKSPACE
+&kp RIGHT_SHIFT  &kp A  &kp S      &kp D         &kp F             &kp G                          &kp H  &kp J  &kp K      &kp L          &kp SEMI  &kp RETURN
+&kp LEFT_SHIFT   &kp Z  &kp X      &kp C         &kp V             &kp B                          &kp N  &kp M  &kp COMMA  &kp DOT        &kp FSLH  &kp BACKSLASH
+                        &kp LCTRL  &kp LEFT_ALT  &kp LEFT_COMMAND  &space_cmd LEFT_COMMAND SPACE  &mo 1  &mo 2  &kp RCTRL  &kp LC(LG(Q))
             >;
 
             sensor-bindings =
@@ -109,10 +119,10 @@
 
         CHAR {
             bindings = <
-&kp ESC    &kp EXCLAMATION  &kp AT_SIGN  &kp HASH  &kp DOLLAR  &kp PERCENT   &kp LCTRL  &kp AMPERSAND  &kp ASTERISK  &kp LEFT_PARENTHESIS  &kp RIGHT_PARENTHESIS  &kp GRAVE
-&kp TAB    &kp N1           &kp N2       &kp N3    &kp N4      &kp N5        &kp N6     &kp N7         &kp N8        &kp N9                &kp N0                 &kp RET
-&kp LSHFT  &kp MINUS        &kp EQUAL    &brace    &bracket    &parenthesis  &kp COLON  &kp APOS       &kp COMMA     &kp DOT               &kp FSLH               &kp BSLH
-                            &trans       &trans    &trans      &trans        &trans     &trans         &trans        &trans
+&kp ESC    &kp EXCLAMATION  &kp AT_SIGN  &kp HASH              &kp DOLLAR      &kp PERCENT       &kp LCTRL  &kp AMPERSAND  &kp ASTERISK  &kp LEFT_PARENTHESIS  &kp RIGHT_PARENTHESIS  &kp GRAVE
+&kp TAB    &kp N1           &kp N2       &kp N3                &kp N4          &kp N5            &kp N6     &kp N7         &kp N8        &kp N9                &kp N0                 &kp RET
+&kp LSHFT  &kp MINUS        &kp EQUAL    &kp LEFT_PARENTHESIS  &kp LEFT_BRACE  &kp LEFT_BRACKET  &kp COLON  &kp APOS       &kp COMMA     &kp DOT               &kp FSLH               &kp BSLH
+                            &trans       &trans                &trans          &trans            &trans     &trans         &trans        &trans
             >;
 
             label = "CHAR";
@@ -121,10 +131,10 @@
         ARROW {
             label = "ARROW";
             bindings = <
-&kp ESC    &kp EXCLAMATION  &kp AT_SIGN  &kp HASH  &kp DOLLAR  &kp PERCENT   &kp LCTRL  &kp PAGE_UP  &kp UP_ARROW  &kp PAGE_DOWN  &kp HOME  &kp GRAVE
-&kp TAB    &kp N1           &kp N2       &kp N3    &kp N4      &kp N5        &kp N6     &kp LEFT     &kp DOWN      &kp RIGHT      &kp END   &kp RET
-&kp LSHFT  &kp MINUS        &kp EQUAL    &brace    &bracket    &parenthesis  &kp COLON  &kp APOS     &kp COMMA     &kp DOT        &kp FSLH  &kp BSLH
-                            &trans       &trans    &trans      &trans        &trans     &trans       &trans        &trans
+&kp ESC    &kp EXCLAMATION  &kp AT_SIGN  &kp HASH               &kp DOLLAR       &kp PERCENT        &kp LCTRL  &kp PAGE_UP  &kp UP_ARROW  &kp PAGE_DOWN  &kp HOME  &kp GRAVE
+&kp TAB    &kp N1           &kp N2       &kp N3                 &kp N4           &kp N5             &kp N6     &kp LEFT     &kp DOWN      &kp RIGHT      &kp END   &kp RET
+&kp LSHFT  &kp MINUS        &kp EQUAL    &kp RIGHT_PARENTHESIS  &kp RIGHT_BRACE  &kp RIGHT_BRACKET  &kp COLON  &kp APOS     &kp COMMA     &kp DOT        &kp FSLH  &kp BSLH
+                            &trans       &trans                 &trans           &trans             &trans     &trans       &trans        &trans
             >;
         };
 
