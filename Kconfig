@@ -6,7 +6,6 @@ config PLANCKEYS_LED_CONTROL
 	depends on !ZMK_SPLIT || ZMK_SPLIT_ROLE_CENTRAL
 	select RAW_HID
 	select LED_STRIP
-	select WS2812_STRIP
 	help
 	  自研模块独占 zmk,underglow 指向的 WS2812 灯带：
 	  - 主机经 Raw HID (usage page 0xFF60) 下发每颗独立 RGB / 纯色 / 亮度；
