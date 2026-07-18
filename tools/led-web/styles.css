@@ -89,10 +89,20 @@ h2.section-gap { margin-top: 10px; }
 .palette-tools {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;
 }
+.palette-tools .field {
+  flex: 0 0 auto;
+  min-width: auto;
+  white-space: nowrap;
+}
 .palette-tools .hex {
+  flex: 0 0 auto;
   width: 78px; font: inherit; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--text); background: #232732; border: 1px solid var(--line);
   border-radius: 6px; padding: 5px 7px;
+}
+.palette-tools .cur-swatch,
+.palette-tools > button {
+  flex: 0 0 auto;
 }
 .schemes {
   display: grid;
@@ -134,7 +144,7 @@ button.active { border-color: var(--accent); background: #2b3550; }
 .presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .presets button { padding: 7px 4px; min-width: 0; }
 label.field { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); flex: 1; min-width: 0; }
-label.field.shrink { flex: 0; }
+label.field.shrink { flex: 0 0 auto; min-width: auto; }
 input[type="range"] { flex: 1; min-width: 0; }
 input[type="color"] { width: 40px; height: 28px; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
 .sliders { display: grid; gap: 8px; margin-top: 10px; }
@@ -158,6 +168,19 @@ input[type="color"] { width: 40px; height: 28px; border: 1px solid var(--line); 
 .px.empty { background: none; border: none; cursor: default; pointer-events: none; }
 .hint { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.35; }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.digit-tools {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px;
+}
+.digit-input {
+  width: 120px; font: inherit; font-size: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text); background: #232732; border: 1px solid var(--line);
+  border-radius: 8px; padding: 7px 10px; letter-spacing: 0.06em;
+}
+.digit-keys {
+  display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-top: 8px;
+}
+.digit-keys button { padding: 7px 0; min-width: 0; font-variant-numeric: tabular-nums; }
+.digit-keys button.active { border-color: var(--accent); background: #2b3550; }
 .log {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px; color: var(--muted); white-space: pre-wrap; word-break: break-all;
@@ -182,4 +205,5 @@ code { background: #232732; padding: 1px 5px; border-radius: 4px; }
   }
   .schemes { grid-template-columns: repeat(2, 1fr); }
   .swatches { grid-template-columns: repeat(5, 1fr); }
+  .digit-keys { grid-template-columns: repeat(5, 1fr); }
 }

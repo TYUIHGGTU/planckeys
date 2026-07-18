@@ -78,7 +78,20 @@
           <button id="fillAxis">轴灯全填基色</button>
           <button id="clearAxis">轴灯全熄</button>
         </div>
-        <div class="hint">点格子用当前画笔色点亮，再次点击熄灭；改的是每颗颜色，当前预设灯效照常运行。格子内数字为灯带下标。</div>
+
+        <h2 class="section-gap">点阵数字</h2>
+        <div class="digit-tools">
+          <input class="digit-input" id="digitInput" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" value="0" spellcheck="false" title="0–9" />
+          <button type="button" id="digitShow">显示</button>
+          <button type="button" id="digitStart" class="primary">开始轮播</button>
+          <button type="button" id="digitStop" disabled>停止轮播</button>
+          <label class="field shrink">间隔
+            <input type="range" id="digitInterval" min="200" max="2000" step="100" value="800" />
+            <span id="digitIntervalVal">800</span>ms
+          </label>
+        </div>
+        <div id="digitKeys" class="digit-keys"></div>
+        <div class="hint">仅 0–9，3×5 点阵。「开始轮播」按 0→9 循环，「停止轮播」停下。</div>
       </div>
     </section>
   </div>

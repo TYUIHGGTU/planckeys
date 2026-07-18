@@ -23,6 +23,23 @@ const AXIS_LAYOUT = [
 const AXIS_INDICES = AXIS_LAYOUT.flat().filter((x) => x !== null);
 const UNDERGLOW_INDICES = [0, 1, 2, 3, 4, 5];
 
+// 点阵字模（行字符串，'1'=亮）。仅支持 0–9，3×5。
+const DIGIT_3X5 = {
+  '0': ['111', '101', '101', '101', '111'],
+  '1': ['010', '110', '010', '010', '111'],
+  '2': ['111', '001', '111', '100', '111'],
+  '3': ['111', '001', '111', '001', '111'],
+  '4': ['101', '101', '111', '001', '001'],
+  '5': ['111', '100', '111', '001', '111'],
+  '6': ['111', '100', '111', '101', '111'],
+  '7': ['111', '001', '001', '001', '001'],
+  '8': ['111', '101', '111', '101', '111'],
+  '9': ['111', '101', '111', '001', '111'],
+};
+const DIGIT_COL0 = 0;
+const DIGIT_MAX = 9;
+const DIGIT_CAROUSEL = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
 const QUICK_COLORS = [
   '#ffffff', '#ff3b30', '#ff9500', '#ffd60a', '#30d158',
   '#64d2ff', '#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f',
@@ -93,6 +110,7 @@ const COLOR_SCHEMES = [
 
 let device = null;
 let mode = 1;
+let digitTimer = null;
 // 画布默认冰蓝，与固件默认一致；连接时会把画布同步给键盘。
 const pixels = new Array(LED_COUNT).fill(null).map(() => ({ r: 0x00, g: 0x40, b: 0xff }));
 
@@ -208,6 +226,7 @@ function renderPalette() {
 }
 
 function applyScheme(scheme) {
+  stopDigitPlayback();
   const cols = AXIS_LAYOUT[0].length;
   for (let r = 0; r < AXIS_LAYOUT.length; r++) {
     for (let c = 0; c < cols; c++) {
@@ -348,11 +367,145 @@ function applySubset(indices, color) {
   for (const i of indices) pixels[i] = color ? { ...color } : { r: 0, g: 0, b: 0 };
   renderCells(); sendAllPixels(); ensureVisible();
 }
-$('fillAxis').addEventListener('click', () => applySubset(AXIS_INDICES, curColor()));
-$('clearAxis').addEventListener('click', () => applySubset(AXIS_INDICES, null));
+$('fillAxis').addEventListener('click', () => { stopDigitPlayback(); applySubset(AXIS_INDICES, curColor()); });
+$('clearAxis').addEventListener('click', () => { stopDigitPlayback(); applySubset(AXIS_INDICES, null); });
 $('fillUnder').addEventListener('click', () => applySubset(UNDERGLOW_INDICES, curColor()));
 $('clearUnder').addEventListener('click', () => applySubset(UNDERGLOW_INDICES, null));
-$('fillAll').addEventListener('click', () => applySubset([...AXIS_INDICES, ...UNDERGLOW_INDICES], curColor()));
+$('fillAll').addEventListener('click', () => { stopDigitPlayback(); applySubset([...AXIS_INDICES, ...UNDERGLOW_INDICES], curColor()); });
+
+function setDigitCarouselControls(playing) {
+  $('digitStart').disabled = playing;
+  $('digitStop').disabled = !playing;
+}
+
+function stopDigitPlayback() {
+  if (digitTimer != null) {
+    clearInterval(digitTimer);
+    digitTimer = null;
+  }
+  setDigitCarouselControls(false);
+}
+
+function clearAxisPixels() {
+  for (const idx of AXIS_INDICES) pixels[idx] = { r: 0, g: 0, b: 0 };
+}
+
+function stampGlyph(glyph, row0, col0, color) {
+  for (let r = 0; r < glyph.length; r++) {
+    const row = glyph[r];
+    for (let c = 0; c < row.length; c++) {
+      if (row[c] !== '1') continue;
+      const idx = AXIS_LAYOUT[row0 + r]?.[col0 + c];
+      if (idx == null) continue;
+      pixels[idx] = { r: color.r, g: color.g, b: color.b };
+    }
+  }
+}
+
+function paintNumber(n, color) {
+  if (!Number.isInteger(n) || n < 0 || n > DIGIT_MAX) return false;
+  const glyph = DIGIT_3X5[String(n)];
+  if (!glyph) return false;
+  clearAxisPixels();
+  stampGlyph(glyph, 0, DIGIT_COL0, color);
+  return true;
+}
+
+function flushDigitPaint(note) {
+  renderCells();
+  sendAllPixels();
+  ensureVisible();
+  log(note);
+}
+
+function highlightDigitKey(n) {
+  document.querySelectorAll('#digitKeys button').forEach((b) => {
+    b.classList.toggle('active', Number(b.dataset.n) === n);
+  });
+}
+
+function parseDigitInput(raw) {
+  const s = String(raw ?? '').replace(/\D/g, '');
+  if (!s) return null;
+  const n = Number(s);
+  if (!Number.isInteger(n) || n < 0 || n > DIGIT_MAX) return null;
+  return n;
+}
+
+function showDigits(raw) {
+  const n = parseDigitInput(raw);
+  if (n == null) {
+    log('点阵数字：仅支持 0–9');
+    return;
+  }
+  stopDigitPlayback();
+  $('digitInput').value = String(n);
+  if (!paintNumber(n, curColor())) return;
+  highlightDigitKey(n);
+  flushDigitPaint('点阵显示: ' + n);
+}
+
+let digitCarouselIndex = 0;
+
+function paintCarouselFrame() {
+  const n = DIGIT_CAROUSEL[digitCarouselIndex % DIGIT_CAROUSEL.length];
+  paintNumber(n, curColor());
+  $('digitInput').value = String(n);
+  highlightDigitKey(n);
+  flushDigitPaint(`轮播: ${n} (${(digitCarouselIndex % DIGIT_CAROUSEL.length) + 1}/${DIGIT_CAROUSEL.length})`);
+  digitCarouselIndex++;
+}
+
+function startDigitCarousel(fromIndex) {
+  const wasPlaying = digitTimer != null;
+  if (digitTimer != null) {
+    clearInterval(digitTimer);
+    digitTimer = null;
+  }
+  digitCarouselIndex = fromIndex != null ? fromIndex : 0;
+  paintCarouselFrame();
+  const ms = Number($('digitInterval').value) || 800;
+  digitTimer = setInterval(paintCarouselFrame, ms);
+  setDigitCarouselControls(true);
+  if (!wasPlaying) log(`开始轮播 0–${DIGIT_MAX}，间隔 ${ms}ms`);
+}
+
+function renderDigitKeys() {
+  const box = $('digitKeys');
+  box.innerHTML = '';
+  for (let d = 0; d <= DIGIT_MAX; d++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.n = String(d);
+    btn.textContent = String(d);
+    btn.addEventListener('click', () => showDigits(String(d)));
+    box.appendChild(btn);
+  }
+}
+
+$('digitShow').addEventListener('click', () => showDigits($('digitInput').value));
+$('digitStart').addEventListener('click', () => startDigitCarousel(0));
+$('digitStop').addEventListener('click', () => {
+  stopDigitPlayback();
+  log('已停止数字轮播');
+});
+$('digitInterval').addEventListener('input', () => {
+  $('digitIntervalVal').textContent = $('digitInterval').value;
+  if (digitTimer != null) {
+    // 保持下一帧序号，只刷新间隔（digitCarouselIndex 已在上一帧自增）
+    const next = digitCarouselIndex;
+    clearInterval(digitTimer);
+    digitTimer = null;
+    digitCarouselIndex = next;
+    const ms = Number($('digitInterval').value) || 800;
+    digitTimer = setInterval(paintCarouselFrame, ms);
+    setDigitCarouselControls(true);
+  }
+});
+$('digitInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') showDigits($('digitInput').value);
+});
+renderDigitKeys();
 
 async function openDevice(dev) {
   device = dev;
