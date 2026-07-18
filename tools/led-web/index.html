@@ -10,95 +10,261 @@
     --muted: #9aa0ad; --accent: #5b8cff; --danger: #ff5b6e; --ok: #33d69f;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
-    margin: 0; min-height: 100vh;
+    margin: 0;
     background: radial-gradient(1200px 800px at 70% -10%, #1b2030 0%, var(--bg) 55%);
     color: var(--text);
-    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
-    display: flex; justify-content: center; padding: 40px 16px;
+    font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    padding: 12px 16px;
+    overflow: hidden;
   }
-  .app { width: 100%; max-width: 640px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); font-weight: 600; }
-  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
-  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .row + .row { margin-top: 14px; }
+  .app {
+    height: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 10px;
+    min-height: 0;
+  }
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px 20px;
+    flex-wrap: wrap;
+  }
+  h1 { font-size: 18px; margin: 0; white-space: nowrap; }
+  h2 { font-size: 12px; margin: 0 0 8px; color: var(--muted); font-weight: 600; letter-spacing: 0.02em; }
+  .sub { color: var(--muted); font-size: 12px; margin: 0; flex: 1; min-width: 200px; }
+  .main {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) 1fr;
+    gap: 12px;
+    min-height: 0;
+    height: 100%;
+  }
+  .side {
+    display: grid;
+    grid-template-rows: auto auto auto 1fr;
+    gap: 10px;
+    min-height: 0;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    min-height: 0;
+  }
+  .card.log-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .workspace {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 10px;
+    min-height: 0;
+    height: 100%;
+  }
+  .workspace > .card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .workspace > .card.axis-card { height: 100%; min-height: 0; }
+  .cur-swatch {
+    width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 5px;
+  }
+  .swatch {
+    aspect-ratio: 1; border-radius: 6px; border: 2px solid transparent;
+    cursor: pointer; padding: 0; min-width: 0; min-height: 0;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+  }
+  .swatch:hover { border-color: rgba(255,255,255,0.35); }
+  .swatch.active { border-color: #fff; }
+  .scheme:hover { border-color: var(--accent); }
+  .palette-tools {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+  }
+  .palette-tools .hex {
+    width: 78px; font: inherit; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--text); background: #232732; border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 7px;
+  }
+  .schemes {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .scheme {
+    display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+    padding: 6px; text-align: left;
+  }
+  .scheme-bar {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; height: 10px;
+    border-radius: 3px; overflow: hidden;
+  }
+  .scheme-bar i { display: block; min-width: 0; }
+  .scheme span { font-size: 11px; color: var(--muted); }
+  .axis-wrap {
+    flex: 1;
+    min-height: 0;
+    container-type: size;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .row + .row { margin-top: 10px; }
   button {
     font: inherit; color: var(--text); background: #232732; border: 1px solid var(--line);
-    border-radius: 10px; padding: 10px 16px; cursor: pointer; transition: 0.15s;
+    border-radius: 8px; padding: 7px 12px; cursor: pointer; transition: 0.15s;
   }
   button:hover:not(:disabled) { border-color: var(--accent); }
   button:disabled { opacity: 0.45; cursor: not-allowed; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #0b1020; font-weight: 600; }
   button.active { border-color: var(--accent); background: #2b3550; }
-  .status { font-size: 13px; color: var(--muted); }
+  .status { font-size: 12px; color: var(--muted); }
   .status.ok { color: var(--ok); }
   .status.err { color: var(--danger); }
-  .presets { display: flex; gap: 10px; flex-wrap: wrap; }
-  .presets button { flex: 1 1 auto; min-width: 88px; }
-  label.field { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
-  input[type="range"] { flex: 1; }
-  input[type="color"] { width: 48px; height: 32px; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .presets button { padding: 7px 4px; min-width: 0; }
+  label.field { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); flex: 1; min-width: 0; }
+  input[type="range"] { flex: 1; min-width: 0; }
+  input[type="color"] { width: 40px; height: 28px; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
+  .sliders { display: grid; gap: 8px; margin-top: 10px; }
   .px {
-    aspect-ratio: 1 / 1; border-radius: 8px; border: 1px solid #3a4150; background: #2a2f3a;
+    border-radius: 8px; border: 1px solid #3a4150; background: #2a2f3a;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    font-size: 10px; color: rgba(255,255,255,0.35); user-select: none;
+    font-size: 11px; color: rgba(255,255,255,0.35); user-select: none;
+    min-height: 0; min-width: 0; width: 100%; height: 100%;
   }
-  .px.under { border-style: dashed; }
-  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
-  .log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 140px; overflow: auto; }
+  .px.under { border-style: dashed; aspect-ratio: 1 / 1; height: auto; }
+  .kbgrid { display: grid; gap: 6px; }
+  .kbgrid.axis {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    width: min(100cqw, calc(100cqh * 4 / 6));
+    height: min(100cqh, calc(100cqw * 6 / 4));
+  }
+  .kbgrid.under {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .px.empty { background: none; border: none; cursor: default; pointer-events: none; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.35; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .log {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; color: var(--muted); white-space: pre-wrap; word-break: break-all;
+    flex: 1; min-height: 0; overflow: auto;
+  }
   code { background: #232732; padding: 1px 5px; border-radius: 4px; }
+
+  @media (max-width: 860px) {
+    body { overflow: auto; height: auto; min-height: 100%; }
+    .app { height: auto; }
+    .main {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+    .side { grid-template-rows: auto; }
+    .card.log-card { min-height: 120px; }
+    .axis-wrap { min-height: 280px; }
+    .kbgrid.axis {
+      width: min(100%, 320px);
+      height: auto;
+      aspect-ratio: 4 / 6;
+    }
+    .schemes { grid-template-columns: repeat(2, 1fr); }
+    .swatches { grid-template-columns: repeat(5, 1fr); }
+  }
 </style>
 </head>
 <body>
 <div class="app">
-  <h1>PlanckKeys L · WS2812 灯带控制台</h1>
-  <div class="sub">通过 WebHID 直连键盘，控制轴灯 + 底灯（单条 WS2812）。需 Chrome / Edge + USB。</div>
+  <header class="header">
+    <h1>PlanckKeys L · WS2812 灯带控制台</h1>
+    <p class="sub">WebHID 直连轴灯 + 底灯（单条 WS2812）。需 Chrome / Edge + USB。</p>
+  </header>
 
-  <div class="card">
-    <div class="row">
-      <button id="connect" class="primary">连接键盘</button>
-      <button id="disconnect" disabled>断开</button>
-      <span id="status" class="status">未连接</span>
-    </div>
-    <div class="hint">首次点击会弹出设备选择框，选中 <code>PlanckKeys L</code>（usage page 0xFF60）。</div>
-  </div>
+  <div class="main">
+    <aside class="side">
+      <div class="card">
+        <div class="row">
+          <button id="connect" class="primary">连接键盘</button>
+          <button id="disconnect" disabled>断开</button>
+          <span id="status" class="status">未连接</span>
+        </div>
+        <div class="hint">首次点击选中 <code>PlanckKeys L</code>（usage page 0xFF60）。</div>
+      </div>
 
-  <div class="card">
-    <h2>预设灯效</h2>
-    <div class="presets">
-      <button data-mode="1">常亮</button>
-      <button data-mode="2">呼吸</button>
-      <button data-mode="3">跑马</button>
-      <button data-mode="4">熔灭</button>
-      <button data-mode="0">关灯</button>
-    </div>
-    <div class="row" style="margin-top:16px;">
-      <label class="field">基色 <input type="color" id="color" value="#0040ff" /></label>
-    </div>
-    <div class="row">
-      <label class="field" style="flex:1;">亮度 <input type="range" id="brightness" min="0" max="255" value="80" /><span id="brightnessVal">80</span></label>
-    </div>
-    <div class="row">
-      <label class="field" style="flex:1;">速度 <input type="range" id="speed" min="1" max="30" value="4" /><span id="speedVal">4</span></label>
-    </div>
-  </div>
+      <div class="card">
+        <h2>预设灯效</h2>
+        <div class="presets">
+          <button data-mode="1">常亮</button>
+          <button data-mode="2">呼吸</button>
+          <button data-mode="3">跑马</button>
+          <button data-mode="4">熔灭</button>
+          <button data-mode="0">关灯</button>
+        </div>
+        <div class="sliders" style="margin-top:10px;">
+          <label class="field">亮度 <input type="range" id="brightness" min="0" max="255" value="80" /><span id="brightnessVal">80</span></label>
+          <label class="field">速度 <input type="range" id="speed" min="1" max="30" value="4" /><span id="speedVal">4</span></label>
+        </div>
+      </div>
 
-  <div class="card">
-    <h2>逐颗 RGB（点格子用当前基色上色，虚线框为底灯）</h2>
-    <div id="grid" class="grid"></div>
-    <div class="row" style="margin-top:16px;">
-      <button id="fillAll">全部填充基色</button>
-      <button id="clearAll">全部熄灭</button>
-    </div>
-    <div class="hint">逐颗上色会切换到「逐颗模式」，覆盖预设灯效。</div>
-  </div>
+      <div class="card">
+        <h2>底灯（6 颗，正面不可见）</h2>
+        <div id="underGrid" class="kbgrid under"></div>
+        <div class="toolbar">
+          <button id="fillUnder">底灯全填基色</button>
+          <button id="clearUnder">底灯全熄</button>
+        </div>
+      </div>
 
-  <div class="card">
-    <div class="status" style="margin-bottom:8px;">日志</div>
-    <div id="log" class="log"></div>
+      <div class="card log-card">
+        <h2>日志</h2>
+        <div id="log" class="log"></div>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <div class="card">
+        <h2>调色板</h2>
+        <div id="swatches" class="swatches"></div>
+        <div class="palette-tools">
+          <span class="cur-swatch" id="curSwatch" title="当前基色"></span>
+          <label class="field" style="flex:0;">自定义 <input type="color" id="color" value="#0040ff" /></label>
+          <input class="hex" id="hex" value="#0040ff" maxlength="7" spellcheck="false" title="十六进制颜色" />
+          <button type="button" id="fillAll">全灯带填基色</button>
+        </div>
+        <h2 style="margin-top:10px;">配色方案</h2>
+        <div id="schemes" class="schemes"></div>
+        <div class="hint">点色块切换当前基色（用于点格子 / 全填）；点方案一键写入逐颗模式。</div>
+      </div>
+
+      <div class="card axis-card">
+        <h2>逐颗 RGB · 轴灯（每键一颗，布局同键盘正面）</h2>
+        <div class="axis-wrap">
+          <div id="axisGrid" class="kbgrid axis"></div>
+        </div>
+        <div class="toolbar">
+          <button id="fillAxis">轴灯全填基色</button>
+          <button id="clearAxis">轴灯全熄</button>
+        </div>
+        <div class="hint">点格子用当前基色点亮，再次点击熄灭。会切换到「逐颗模式」，覆盖预设灯效。格子内数字为灯带下标。</div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -110,10 +276,90 @@
   const CMD_PIXELS = 0xA2;     // [1]=offset [2]=count 之后每颗 3 字节 RGB
   const CMD_BRIGHTNESS = 0xA3; // [1]=brightness
 
-  // 灯带参数（待 PCB 作者确认后调整；须与固件 chain-length / underglow-start 对齐）
+  // 灯带参数（须与固件 chain-length 对齐）。单条链 28 颗：
+  //   index 6..27 = 轴灯（每键一颗，共 22），index 0..5 = 底灯（正面不可见）。
   const LED_COUNT = 28;
-  const UNDERGLOW_START = 22;  // index >= 此值为底灯（仅影响本页显示）
   const MAX_PX_PER_REPORT = Math.floor((REPORT_SIZE - 3) / 3); // = 9
+
+  // 轴灯布局：正面 6×4 逆时针旋 90° 后为 4 列 × 6 行（与配图一致）；null = 无键。值为灯带下标。
+  const AXIS_LAYOUT = [
+    [10, 21, 22, 6],
+    [11, 20, 23, 7],
+    [12, 19, 24, 8],
+    [13, 18, 25, 9],
+    [14, 17, 26, null],
+    [15, 16, 27, null],
+  ];
+  const AXIS_INDICES = AXIS_LAYOUT.flat().filter((x) => x !== null);
+  const UNDERGLOW_INDICES = [0, 1, 2, 3, 4, 5];
+
+  const QUICK_COLORS = [
+    '#ffffff', '#ff3b30', '#ff9500', '#ffd60a', '#30d158',
+    '#64d2ff', '#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f',
+  ];
+
+  // 配色方案：按轴灯行列生成渐变；底灯用方案的 accent 色带。
+  const COLOR_SCHEMES = [
+    {
+      id: 'ocean', name: '海洋',
+      preview: ['#003d7a', '#0077b6', '#00b4d8', '#48cae4', '#90e0ef'],
+      primary: '#00b4d8',
+      paint: (row, col, cols) => lerpHex('#003d7a', '#90e0ef', (row * cols + col) / (6 * cols - 1)),
+      under: (i, n) => lerpHex('#0077b6', '#48cae4', i / (n - 1)),
+    },
+    {
+      id: 'sunset', name: '日落',
+      preview: ['#ff6b35', '#f7c59f', '#ef476f', '#7b2cbf', '#240046'],
+      primary: '#ff6b35',
+      paint: (row, col, cols) => lerpHex('#ff6b35', '#5a189a', (row * cols + col) / (6 * cols - 1)),
+      under: (i, n) => lerpHex('#ef476f', '#240046', i / (n - 1)),
+    },
+    {
+      id: 'neon', name: '霓虹',
+      preview: ['#ff00aa', '#00f0ff', '#39ff14', '#ff00aa', '#00f0ff'],
+      primary: '#00f0ff',
+      paint: (row, col) => ((row + col) % 2 ? '#ff00aa' : '#00f0ff'),
+      under: (i) => (i % 2 ? '#39ff14' : '#ff00aa'),
+    },
+    {
+      id: 'forest', name: '森林',
+      preview: ['#081c15', '#1b4332', '#2d6a4f', '#52b788', '#95d5b2'],
+      primary: '#52b788',
+      paint: (row, col, cols) => lerpHex('#081c15', '#95d5b2', (row * cols + col) / (6 * cols - 1)),
+      under: (i, n) => lerpHex('#1b4332', '#52b788', i / (n - 1)),
+    },
+    {
+      id: 'rainbow', name: '彩虹',
+      preview: ['#ff0040', '#ffd000', '#40ff40', '#00b0ff', '#b000ff'],
+      primary: '#ff0040',
+      paint: (row, col, cols) => {
+        const t = (row * cols + col) / (6 * cols - 1);
+        return hslToHex(t * 300, 1, 0.5);
+      },
+      under: (i, n) => hslToHex((i / (n - 1)) * 300, 1, 0.5),
+    },
+    {
+      id: 'cyber', name: '赛博',
+      preview: ['#ff2a6d', '#05d9e8', '#d1f7ff', '#01012b', '#ff2a6d'],
+      primary: '#05d9e8',
+      paint: (_row, col, cols) => (col < cols / 2 ? '#ff2a6d' : '#05d9e8'),
+      under: (i, n) => (i < n / 2 ? '#ff2a6d' : '#05d9e8'),
+    },
+    {
+      id: 'amber', name: '暖琥珀',
+      preview: ['#3a1800', '#7a3b00', '#c26e00', '#ffb347', '#ffe0a3'],
+      primary: '#ffb347',
+      paint: (row, col, cols) => lerpHex('#3a1800', '#ffe0a3', (row * cols + col) / (6 * cols - 1)),
+      under: (i, n) => lerpHex('#7a3b00', '#ffb347', i / (n - 1)),
+    },
+    {
+      id: 'mono', name: '冰蓝',
+      preview: ['#0040ff', '#0040ff', '#0040ff', '#66a3ff', '#66a3ff'],
+      primary: '#0040ff',
+      paint: () => '#0040ff',
+      under: () => '#66a3ff',
+    },
+  ];
 
   let device = null;
   let mode = 1;
@@ -135,13 +381,120 @@
     $('disconnect').disabled = !on;
     $('connect').disabled = on;
   }
+  function clampByte(n) { return Math.max(0, Math.min(255, Math.round(n))); }
   function hexToRgb(hex) {
-    const n = parseInt(hex.slice(1), 16);
+    const h = normalizeHex(hex);
+    if (!h) return { r: 0, g: 0, b: 0 };
+    const n = parseInt(h.slice(1), 16);
     return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+  function rgbToHex({ r, g, b }) {
+    return '#' + [r, g, b].map((v) => clampByte(v).toString(16).padStart(2, '0')).join('');
+  }
+  function normalizeHex(hex) {
+    if (!hex) return null;
+    let s = String(hex).trim();
+    if (s[0] !== '#') s = '#' + s;
+    if (/^#[0-9a-fA-F]{3}$/.test(s)) {
+      s = '#' + s[1] + s[1] + s[2] + s[2] + s[3] + s[3];
+    }
+    return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : null;
+  }
+  function lerpHex(a, b, t) {
+    const A = hexToRgb(a), B = hexToRgb(b);
+    const u = Math.max(0, Math.min(1, t));
+    return rgbToHex({
+      r: A.r + (B.r - A.r) * u,
+      g: A.g + (B.g - A.g) * u,
+      b: A.b + (B.b - A.b) * u,
+    });
+  }
+  function hslToHex(h, s, l) {
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) [r, g, b] = [c, x, 0];
+    else if (h < 120) [r, g, b] = [x, c, 0];
+    else if (h < 180) [r, g, b] = [0, c, x];
+    else if (h < 240) [r, g, b] = [0, x, c];
+    else if (h < 300) [r, g, b] = [x, 0, c];
+    else [r, g, b] = [c, 0, x];
+    return rgbToHex({ r: (r + m) * 255, g: (g + m) * 255, b: (b + m) * 255 });
   }
   function curColor() { return hexToRgb($('color').value); }
   function curBrightness() { return Number($('brightness').value); }
   function curSpeed() { return Number($('speed').value); }
+
+  function setBaseColor(hex, { syncConfig = true } = {}) {
+    const h = normalizeHex(hex);
+    if (!h) return;
+    $('color').value = h;
+    $('hex').value = h;
+    $('curSwatch').style.background = h;
+    document.querySelectorAll('.swatch').forEach((el) => {
+      el.classList.toggle('active', el.dataset.hex === h);
+    });
+    if (syncConfig && mode >= 1 && mode <= 4) sendConfig();
+  }
+
+  function renderPalette() {
+    const box = $('swatches');
+    box.innerHTML = '';
+    for (const hex of QUICK_COLORS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'swatch';
+      btn.dataset.hex = hex;
+      btn.style.background = hex;
+      btn.title = hex;
+      btn.addEventListener('click', () => setBaseColor(hex));
+      box.appendChild(btn);
+    }
+    const schemes = $('schemes');
+    schemes.innerHTML = '';
+    for (const scheme of COLOR_SCHEMES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'scheme';
+      btn.title = '应用「' + scheme.name + '」';
+      const bar = document.createElement('div');
+      bar.className = 'scheme-bar';
+      for (const c of scheme.preview) {
+        const i = document.createElement('i');
+        i.style.background = c;
+        bar.appendChild(i);
+      }
+      const label = document.createElement('span');
+      label.textContent = scheme.name;
+      btn.appendChild(bar);
+      btn.appendChild(label);
+      btn.addEventListener('click', () => applyScheme(scheme));
+      schemes.appendChild(btn);
+    }
+    setBaseColor($('color').value, { syncConfig: false });
+  }
+
+  function applyScheme(scheme) {
+    const cols = AXIS_LAYOUT[0].length;
+    for (let r = 0; r < AXIS_LAYOUT.length; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = AXIS_LAYOUT[r][c];
+        if (idx === null) continue;
+        pixels[idx] = hexToRgb(scheme.paint(r, c, cols));
+      }
+    }
+    const n = UNDERGLOW_INDICES.length;
+    UNDERGLOW_INDICES.forEach((idx, i) => {
+      pixels[idx] = hexToRgb(scheme.under(i, n));
+    });
+    setBaseColor(scheme.primary, { syncConfig: false });
+    mode = 5;
+    highlightPresets();
+    renderCells();
+    sendAllPixels();
+    log('应用配色: ' + scheme.name);
+  }
 
   function findOutputReportId() {
     if (!device) return 0;
@@ -187,24 +540,42 @@
     send([CMD_PIXELS, idx, 1, p.r, p.g, p.b]);
   }
 
-  function renderGrid() {
-    const g = $('grid');
-    g.innerHTML = '';
-    for (let i = 0; i < LED_COUNT; i++) {
-      const el = document.createElement('div');
-      el.className = 'px' + (i >= UNDERGLOW_START ? ' under' : '');
-      el.dataset.idx = i;
-      el.textContent = i;
-      paintCell(el, pixels[i]);
-      el.addEventListener('click', () => {
-        pixels[i] = curColor();
-        paintCell(el, pixels[i]);
-        mode = 5;
-        highlightPresets();
-        sendOnePixel(i);
-      });
-      g.appendChild(el);
+  function makeCell(idx, under) {
+    const el = document.createElement('div');
+    el.className = 'px' + (under ? ' under' : '');
+    el.dataset.idx = idx;
+    el.textContent = idx;
+    paintCell(el, pixels[idx]);
+    el.addEventListener('click', () => {
+      const p = pixels[idx];
+      const lit = p.r || p.g || p.b;
+      // 切换：亮着(任意颜色)则熄灭；灭着则用当前基色点亮。
+      pixels[idx] = lit ? { r: 0, g: 0, b: 0 } : curColor();
+      paintCell(el, pixels[idx]);
+      mode = 5;
+      highlightPresets();
+      sendOnePixel(idx);
+    });
+    return el;
+  }
+
+  function renderCells() {
+    const ag = $('axisGrid');
+    ag.innerHTML = '';
+    for (const row of AXIS_LAYOUT) {
+      for (const idx of row) {
+        if (idx === null) {
+          const empty = document.createElement('div');
+          empty.className = 'px empty';
+          ag.appendChild(empty);
+        } else {
+          ag.appendChild(makeCell(idx, false));
+        }
+      }
     }
+    const ug = $('underGrid');
+    ug.innerHTML = '';
+    for (const idx of UNDERGLOW_INDICES) ug.appendChild(makeCell(idx, true));
   }
   function paintCell(el, p) {
     const on = p.r || p.g || p.b;
@@ -221,7 +592,15 @@
   document.querySelectorAll('.presets button').forEach((b) => {
     b.addEventListener('click', () => { mode = Number(b.dataset.mode); highlightPresets(); sendConfig(); });
   });
-  $('color').addEventListener('input', () => { if (mode >= 1 && mode <= 4) sendConfig(); });
+  $('color').addEventListener('input', () => setBaseColor($('color').value));
+  $('hex').addEventListener('change', () => {
+    const h = normalizeHex($('hex').value);
+    if (h) setBaseColor(h);
+    else $('hex').value = $('color').value;
+  });
+  $('hex').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('hex').dispatchEvent(new Event('change'));
+  });
   $('brightness').addEventListener('input', () => {
     $('brightnessVal').textContent = $('brightness').value;
     send([CMD_BRIGHTNESS, curBrightness()]);
@@ -230,15 +609,15 @@
     $('speedVal').textContent = $('speed').value;
     if (mode >= 2 && mode <= 4) sendConfig();
   });
-  $('fillAll').addEventListener('click', () => {
-    const c = curColor();
-    for (let i = 0; i < LED_COUNT; i++) pixels[i] = { ...c };
-    mode = 5; highlightPresets(); renderGrid(); sendAllPixels();
-  });
-  $('clearAll').addEventListener('click', () => {
-    for (let i = 0; i < LED_COUNT; i++) pixels[i] = { r: 0, g: 0, b: 0 };
-    mode = 5; highlightPresets(); renderGrid(); sendAllPixels();
-  });
+  function applySubset(indices, color) {
+    for (const i of indices) pixels[i] = color ? { ...color } : { r: 0, g: 0, b: 0 };
+    mode = 5; highlightPresets(); renderCells(); sendAllPixels();
+  }
+  $('fillAxis').addEventListener('click', () => applySubset(AXIS_INDICES, curColor()));
+  $('clearAxis').addEventListener('click', () => applySubset(AXIS_INDICES, null));
+  $('fillUnder').addEventListener('click', () => applySubset(UNDERGLOW_INDICES, curColor()));
+  $('clearUnder').addEventListener('click', () => applySubset(UNDERGLOW_INDICES, null));
+  $('fillAll').addEventListener('click', () => applySubset([...AXIS_INDICES, ...UNDERGLOW_INDICES], curColor()));
 
   async function openDevice(dev) {
     device = dev;
@@ -273,7 +652,8 @@
     $('connect').disabled = true;
   }
 
-  renderGrid();
+  renderPalette();
+  renderCells();
   highlightPresets();
 </script>
 </body>

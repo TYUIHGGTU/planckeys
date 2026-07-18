@@ -20,12 +20,13 @@ config PLANCKEYS_LED_DEFAULT_BRIGHTNESS
 	int "Default brightness (0-255)"
 	default 80
 
-config PLANCKEYS_LED_UNDERGLOW_START
-	int "Chain index where the bottom (underglow) LEDs start"
-	default 22
+config PLANCKEYS_LED_AXIS_START
+	int "Chain index where the per-key (axis) LEDs start"
+	default 6
 	help
-	  灯带前段为每键轴灯、后段为底灯时，这里填底灯起始 index。
-	  仅用于日志/观感（如跑马方向），不影响基础功能。待 PCB 作者确认后调整。
+	  已确认布局（单条链 28 颗）：index 0..5 为底灯（正面不可见），
+	  index 6..27 为每键轴灯。此值仅用于日志/观感（如跑马方向），
+	  不影响基础功能。
 
 config PLANCKEYS_LED_FRAME_MS
 	int "Animation frame period in milliseconds"

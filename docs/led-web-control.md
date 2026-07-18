@@ -73,21 +73,48 @@
 
 - `config/planck_left.conf`：`CONFIG_PLANCKEYS_LED_DEFAULT_BRIGHTNESS`、（Kconfig）`PLANCKEYS_LED_FRAME_MS`。
 - 灯带颗数取自 dts 的 `chain-length`（当前 28）。若实际颗数不同，改 dts；网页里 `LED_COUNT` 需同步。
-- `PLANCKEYS_LED_UNDERGLOW_START`（默认 22）与网页 `UNDERGLOW_START`：仅用于观感/UI 区分轴灯与底灯。
+- 轴灯/底灯映射见下节「灯带映射」；网页在 `AXIS_LAYOUT` / `UNDERGLOW_INDICES` 里定义，Kconfig `PLANCKEYS_LED_AXIS_START`（默认 6）仅供观感/日志。
 
-## 待 PCB 作者确认（不阻塞基础功能）
+## 灯带映射（已确认）
 
-从固件层面推断：两块板 dts 各只有**一个** `ws2812@0` 节点、数据线只有一根（`spi3` MOSI = P0.13），且 `chain-length=28` 恰等于「22 颗轴灯（每键一颗）+ 6 颗底灯」。因此判断是**单条链 28 颗**。仍需作者确认：
+单条链共 28 颗（`spi3` MOSI = P0.13，一根数据线）：
 
-1. 实际总颗数是否为 28；
-2. 链路顺序：index 0 从哪颗键起、22 颗轴灯走线顺序、6 颗底灯插在链路哪一段。
+- **index 0..5 = 底灯**（6 颗，正面不可见）。
+- **index 6..27 = 轴灯**（22 颗，每键一颗）。
 
-以上只影响「跑马方向是否顺眼」「网页 UI 把哪几颗标成底灯」等观感；逐颗 RGB 与预设的基础功能不受影响。确认后改 `chain-length` / `UNDERGLOW_START` 即可。
+轴灯 index 与按键的正面对应关系（6 列 × 4 行，与网页「轴灯」区一致）：
+
+```
+15 14 13 12 11 10
+16 17 18 19 20 21
+27 26 25 24 23 22
+      9  8  7  6      (左下两格无键)
+```
+
+网页 `tools/led-web/index.html` 的 `AXIS_LAYOUT` / `UNDERGLOW_INDICES` 已按此映射；
+若更换 PCB 或灯带顺序变化，改这两处（及 dts `chain-length`）即可。
+
+## 构建踩坑记录（实测得出，务必留意）
+
+在 ZMK `main` + Zephyr 4.1 上，本方案踩到两个坑，均已修复：
+
+1. **`WS2812_STRIP` 不是可手动赋值的符号。** 一开始在 `planck_left.conf` 写了
+   `CONFIG_WS2812_STRIP=y`，报 `undefined symbol WS2812_STRIP` 并因「Kconfig 告警即错误」
+   直接中止。正确做法：只需 `CONFIG_LED_STRIP=y`，`worldsemi,ws2812-spi` 驱动会由
+   devicetree 节点自动编入（右板内建 underglow 也走同一路径，只 `select LED_STRIP`）。
+   根 `Kconfig` 里也**不要** `select WS2812_STRIP`。
+2. **外部电源头文件已迁移。** ZMK `main` 已删除 `zmk/ext_power.h`（旧路径 404），
+   API 迁到 **`<drivers/ext_power.h>`**，`ext_power_enable/disable/get` 签名不变；
+   设备用 `device_get_binding("EXT_POWER")` 获取（与 ZMK 自带 `&ext_power` behavior 一致）。
+
+另外还有若干**无害告警**（右板同样有、不影响构建）：`LOG_PROCESS_THREAD_STARTUP_DELAY_MS`
+未生效、`SOC_DCDC_NRF52X` / `KSCAN` / `BT_CTLR` 已弃用等。
+
+> 状态：左板已成功构建，并**真机验收通过**（预设灯效、逐颗 RGB、`&led_next` 循环、网页控制均正常）。
 
 ## 已知限制 / 风险
 
 - 需 Chrome/Edge + USB；Firefox/Safari 无 WebHID。蓝牙下 WebHID 不可用。
-- `config/west.yml` 的 `zmk` 跟 `main`，上游破坏性变更可能影响构建；稳定后建议固定版本。
+- `config/west.yml` 的 `zmk` / `zmk-raw-hid` 跟 `main`，上游破坏性变更可能影响构建（本次的两个坑正是 `main` 变动导致）；稳定后建议在 `west.yml` 固定版本。
 - 左板同时开了 `ZMK_STUDIO`（USB CDC）与第二 HID 接口（Raw HID）。nRF52840 USB 端点有限，若真机出现 USB 枚举异常，可临时在 `planck_left.conf` 关掉 `CONFIG_ZMK_STUDIO`。
 - `build.yaml` 中 `planck_left` 的两个 `snippet:` 是重复键（YAML 只保留后者），这是改造前就有的情况，未在本次改动。
-- 因无法本地完整构建，行为/灯效需 CI 构建 + 真机验证。
