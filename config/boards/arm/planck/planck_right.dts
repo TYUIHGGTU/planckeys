@@ -78,21 +78,61 @@ nice_view_spi: &spi2 {
         color-mapping = <LED_COLOR_ID_GREEN LED_COLOR_ID_RED LED_COLOR_ID_BLUE>;
 		};
 };
+// 独立后不再需要把右板拼到合并变换的右半，故去掉 col-offset，
+// 并覆盖 map：右板底排在 col 0..3（编码器键在 col 3）。
 &default_transform {
-	col-offset = <6>;
+	map = <
+		RC(0,0) RC(0,1) RC(0,2) RC(0,3) RC(0,4) RC(0,5)
+		RC(1,0) RC(1,1) RC(1,2) RC(1,3) RC(1,4) RC(1,5)
+		RC(2,0) RC(2,1) RC(2,2) RC(2,3) RC(2,4) RC(2,5)
+		RC(3,0) RC(3,1) RC(3,2) RC(3,3)
+	>;
 };
 &right_encoder {
     status = "okay";
 };
 
-&matrix_physical_layout {
-  	kscan = <&kscan0>;
+&sensors {
+	sensors = <&right_encoder>;
 };
 
 / {
 	chosen {
-		zmk,physical-layout = &matrix_physical_layout;
+		zmk,physical-layout = &right_physical_layout;
     zmk,underglow = &led_strip;
+	};
+
+	// 右板：整体顺时针旋转 90°（4 列 x 6 行）。
+	// new_x = (4-1) - row, new_y = col。位置顺序同（覆盖后的）default_transform。
+	right_physical_layout: right_physical_layout {
+		compatible = "zmk,physical-layout";
+		display-name = "PlanckKeys Right";
+		transform = <&default_transform>;
+		kscan = <&kscan0>;
+		keys  //                     w   h    x    y   rot   rx   ry
+			= <&key_physical_attrs 100 100  300    0     0    0    0>
+			, <&key_physical_attrs 100 100  300  100     0    0    0>
+			, <&key_physical_attrs 100 100  300  200     0    0    0>
+			, <&key_physical_attrs 100 100  300  300     0    0    0>
+			, <&key_physical_attrs 100 100  300  400     0    0    0>
+			, <&key_physical_attrs 100 100  300  500     0    0    0>
+			, <&key_physical_attrs 100 100  200    0     0    0    0>
+			, <&key_physical_attrs 100 100  200  100     0    0    0>
+			, <&key_physical_attrs 100 100  200  200     0    0    0>
+			, <&key_physical_attrs 100 100  200  300     0    0    0>
+			, <&key_physical_attrs 100 100  200  400     0    0    0>
+			, <&key_physical_attrs 100 100  200  500     0    0    0>
+			, <&key_physical_attrs 100 100  100    0     0    0    0>
+			, <&key_physical_attrs 100 100  100  100     0    0    0>
+			, <&key_physical_attrs 100 100  100  200     0    0    0>
+			, <&key_physical_attrs 100 100  100  300     0    0    0>
+			, <&key_physical_attrs 100 100  100  400     0    0    0>
+			, <&key_physical_attrs 100 100  100  500     0    0    0>
+			, <&key_physical_attrs 100 100    0    0     0    0    0>
+			, <&key_physical_attrs 100 100    0  100     0    0    0>
+			, <&key_physical_attrs 100 100    0  200     0    0    0>
+			, <&key_physical_attrs 100 100    0  300     0    0    0>
+			;
 	};
 
 	kscan0: kscan_composite {

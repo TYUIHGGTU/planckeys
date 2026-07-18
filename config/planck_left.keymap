@@ -1,0 +1,67 @@
+#include <behaviors.dtsi>
+#include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/bt.h>
+
+/ {
+    behaviors {
+        // 自研 LED 模块提供的自定义 behavior：循环切换灯效预设
+        // （常亮 -> 呼吸 -> 跑马 -> 熔灭 -> 关灯 -> ...）。
+        // 驱动见仓库根 src/led_control.c，绑定见 dts/bindings/behaviors。
+        led_next: behavior_led_next {
+            compatible = "planckeys,behavior-led-next";
+            #binding-cells = <0>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+
+        // 位置顺序（22 键，见 default_transform 左板 map）：
+        //  0  1  2  3  4  5
+        //  6  7  8  9 10 11
+        // 12 13 14 15 16 17
+        //      18 19 20 21     (18 = 编码器按压)
+        default_layer {
+            bindings = <
+&kp ESCAPE      &kp Q  &kp W  &kp E         &kp R      &kp T
+&kp TAB         &kp A  &kp S  &kp D         &kp F      &kp G
+&kp LEFT_SHIFT  &kp Z  &kp X  &kp C         &kp V      &kp B
+                       &kp LCTRL  &kp LEFT_ALT  &mo 1  &kp SPACE
+            >;
+
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
+        };
+
+        lower_layer {
+            bindings = <
+&kp ESC         &trans    &kp PG_UP  &kp UP_ARROW  &kp PG_DN  &none
+&kp TAB         &kp HOME  &kp LEFT   &kp DOWN      &kp RIGHT  &trans
+&kp LEFT_SHIFT  &kp Z     &kp X      &kp C         &kp D      &kp SEMI
+                          &trans     &trans        &trans     &trans
+            >;
+
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
+        };
+
+        // 系统层：蓝牙管理 + 灯效循环 + bootloader（通过 combo 进入，见下）。
+        system_layer {
+            bindings = <
+&bt BT_CLR_ALL  &bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_CLR
+&led_next       &trans        &trans        &trans        &trans        &trans
+&bootloader     &trans        &trans        &trans        &trans        &trans
+                              &trans        &trans        &trans        &trans
+            >;
+        };
+    };
+
+    combos {
+        compatible = "zmk,combos";
+        // 左上三键同时按住进入系统层（同板组合，位置索引对应本板 22 键排布）。
+        combo_system {
+            timeout-ms = <50>;
+            key-positions = <0 6 12>;
+            bindings = <&mo 2>;
+            layers = <0>;
+        };
+    };
+};

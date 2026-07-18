@@ -5,6 +5,13 @@ on:
     paths:
       - config/**
       - build.yaml
+      # 仓库根即 ZMK 模块（自研 LED 控制），改动这些文件也要触发构建
+      - CMakeLists.txt
+      - Kconfig
+      - zephyr/**
+      - src/**
+      - include/**
+      - dts/**
 
 jobs:
   build:

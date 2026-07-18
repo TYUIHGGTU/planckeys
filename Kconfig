@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: MIT
+# 仓库根 ZMK 模块配置：自研 WS2812 灯带控制（网页每颗 RGB + 预设灯效）。
+
+config PLANCKEYS_LED_CONTROL
+	bool "planckeys web-controlled WS2812 LED (takes over the strip)"
+	depends on !ZMK_SPLIT || ZMK_SPLIT_ROLE_CENTRAL
+	select RAW_HID
+	select LED_STRIP
+	select WS2812_STRIP
+	help
+	  自研模块独占 zmk,underglow 指向的 WS2812 灯带：
+	  - 主机经 Raw HID (usage page 0xFF60) 下发每颗独立 RGB / 纯色 / 亮度；
+	  - 内建预设灯效：常亮 / 呼吸 / 跑马 / 熔灭 / 关灯；
+	  - keymap 里的 &led_next 键循环切换上述预设。
+	  使用前请在 <board>.conf 里关闭 CONFIG_ZMK_RGB_UNDERGLOW，避免两者
+	  争抢同一条灯带。
+
+if PLANCKEYS_LED_CONTROL
+
+config PLANCKEYS_LED_DEFAULT_BRIGHTNESS
+	int "Default brightness (0-255)"
+	default 80
+
+config PLANCKEYS_LED_UNDERGLOW_START
+	int "Chain index where the bottom (underglow) LEDs start"
+	default 22
+	help
+	  灯带前段为每键轴灯、后段为底灯时，这里填底灯起始 index。
+	  仅用于日志/观感（如跑马方向），不影响基础功能。待 PCB 作者确认后调整。
+
+config PLANCKEYS_LED_FRAME_MS
+	int "Animation frame period in milliseconds"
+	default 33
+
+endif # PLANCKEYS_LED_CONTROL

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PlanckKeys L · WS2812 灯带控制台</title>
+<style>
+  :root {
+    --bg: #0f1115; --card: #181b22; --line: #272b34; --text: #e7e9ee;
+    --muted: #9aa0ad; --accent: #5b8cff; --danger: #ff5b6e; --ok: #33d69f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: radial-gradient(1200px 800px at 70% -10%, #1b2030 0%, var(--bg) 55%);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex; justify-content: center; padding: 40px 16px;
+  }
+  .app { width: 100%; max-width: 640px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); font-weight: 600; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .row + .row { margin-top: 14px; }
+  button {
+    font: inherit; color: var(--text); background: #232732; border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 16px; cursor: pointer; transition: 0.15s;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #0b1020; font-weight: 600; }
+  button.active { border-color: var(--accent); background: #2b3550; }
+  .status { font-size: 13px; color: var(--muted); }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--danger); }
+  .presets { display: flex; gap: 10px; flex-wrap: wrap; }
+  .presets button { flex: 1 1 auto; min-width: 88px; }
+  label.field { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+  input[type="range"] { flex: 1; }
+  input[type="color"] { width: 48px; height: 32px; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .px {
+    aspect-ratio: 1 / 1; border-radius: 8px; border: 1px solid #3a4150; background: #2a2f3a;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: rgba(255,255,255,0.35); user-select: none;
+  }
+  .px.under { border-style: dashed; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 140px; overflow: auto; }
+  code { background: #232732; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>PlanckKeys L · WS2812 灯带控制台</h1>
+  <div class="sub">通过 WebHID 直连键盘，控制轴灯 + 底灯（单条 WS2812）。需 Chrome / Edge + USB。</div>
+
+  <div class="card">
+    <div class="row">
+      <button id="connect" class="primary">连接键盘</button>
+      <button id="disconnect" disabled>断开</button>
+      <span id="status" class="status">未连接</span>
+    </div>
+    <div class="hint">首次点击会弹出设备选择框，选中 <code>PlanckKeys L</code>（usage page 0xFF60）。</div>
+  </div>
+
+  <div class="card">
+    <h2>预设灯效</h2>
+    <div class="presets">
+      <button data-mode="1">常亮</button>
+      <button data-mode="2">呼吸</button>
+      <button data-mode="3">跑马</button>
+      <button data-mode="4">熔灭</button>
+      <button data-mode="0">关灯</button>
+    </div>
+    <div class="row" style="margin-top:16px;">
+      <label class="field">基色 <input type="color" id="color" value="#0040ff" /></label>
+    </div>
+    <div class="row">
+      <label class="field" style="flex:1;">亮度 <input type="range" id="brightness" min="0" max="255" value="80" /><span id="brightnessVal">80</span></label>
+    </div>
+    <div class="row">
+      <label class="field" style="flex:1;">速度 <input type="range" id="speed" min="1" max="30" value="4" /><span id="speedVal">4</span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>逐颗 RGB（点格子用当前基色上色，虚线框为底灯）</h2>
+    <div id="grid" class="grid"></div>
+    <div class="row" style="margin-top:16px;">
+      <button id="fillAll">全部填充基色</button>
+      <button id="clearAll">全部熄灭</button>
+    </div>
+    <div class="hint">逐颗上色会切换到「逐颗模式」，覆盖预设灯效。</div>
+  </div>
+
+  <div class="card">
+    <div class="status" style="margin-bottom:8px;">日志</div>
+    <div id="log" class="log"></div>
+  </div>
+</div>
+
+<script>
+  // ---- 须与固件 src/led_control.c 保持一致 ----
+  const USAGE_PAGE = 0xFF60;
+  const REPORT_SIZE = 32;
+  const CMD_CONFIG = 0xA1;     // [1]=mode [2]=R [3]=G [4]=B [5]=brightness [6]=speed
+  const CMD_PIXELS = 0xA2;     // [1]=offset [2]=count 之后每颗 3 字节 RGB
+  const CMD_BRIGHTNESS = 0xA3; // [1]=brightness
+
+  // 灯带参数（待 PCB 作者确认后调整；须与固件 chain-length / underglow-start 对齐）
+  const LED_COUNT = 28;
+  const UNDERGLOW_START = 22;  // index >= 此值为底灯（仅影响本页显示）
+  const MAX_PX_PER_REPORT = Math.floor((REPORT_SIZE - 3) / 3); // = 9
+
+  let device = null;
+  let mode = 1;
+  const pixels = new Array(LED_COUNT).fill(null).map(() => ({ r: 0, g: 0, b: 0 }));
+
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $('status');
+  const logEl = $('log');
+
+  function log(msg) {
+    const t = new Date().toLocaleTimeString();
+    logEl.textContent = `[${t}] ${msg}\n` + logEl.textContent;
+  }
+  function setStatus(text, cls) {
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (cls ? ' ' + cls : '');
+  }
+  function setControlsEnabled(on) {
+    $('disconnect').disabled = !on;
+    $('connect').disabled = on;
+  }
+  function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+  function curColor() { return hexToRgb($('color').value); }
+  function curBrightness() { return Number($('brightness').value); }
+  function curSpeed() { return Number($('speed').value); }
+
+  function findOutputReportId() {
+    if (!device) return 0;
+    for (const c of device.collections || [])
+      for (const r of c.outputReports || []) return r.reportId ?? 0;
+    return 0;
+  }
+
+  async function send(bytes) {
+    if (!device || !device.opened) { log('设备未连接，忽略发送'); return; }
+    const data = new Uint8Array(REPORT_SIZE);
+    data.set(bytes.slice(0, REPORT_SIZE));
+    const reportId = findOutputReportId();
+    try {
+      await device.sendReport(reportId, data);
+    } catch (e) {
+      try { await device.sendFeatureReport(reportId, data); }
+      catch (e2) { log('发送失败: ' + (e2.message || e2)); setStatus('发送失败', 'err'); }
+    }
+  }
+
+  function sendConfig() {
+    const c = curColor();
+    send([CMD_CONFIG, mode, c.r, c.g, c.b, curBrightness(), curSpeed()]);
+    log(`config mode=${mode} rgb=${c.r},${c.g},${c.b} br=${curBrightness()} sp=${curSpeed()}`);
+  }
+
+  async function sendAllPixels() {
+    for (let off = 0; off < LED_COUNT; off += MAX_PX_PER_REPORT) {
+      const cnt = Math.min(MAX_PX_PER_REPORT, LED_COUNT - off);
+      const bytes = [CMD_PIXELS, off, cnt];
+      for (let i = 0; i < cnt; i++) {
+        const p = pixels[off + i];
+        bytes.push(p.r, p.g, p.b);
+      }
+      await send(bytes);
+    }
+    log(`发送逐颗 ${LED_COUNT} 颗`);
+  }
+
+  function sendOnePixel(idx) {
+    const p = pixels[idx];
+    send([CMD_PIXELS, idx, 1, p.r, p.g, p.b]);
+  }
+
+  function renderGrid() {
+    const g = $('grid');
+    g.innerHTML = '';
+    for (let i = 0; i < LED_COUNT; i++) {
+      const el = document.createElement('div');
+      el.className = 'px' + (i >= UNDERGLOW_START ? ' under' : '');
+      el.dataset.idx = i;
+      el.textContent = i;
+      paintCell(el, pixels[i]);
+      el.addEventListener('click', () => {
+        pixels[i] = curColor();
+        paintCell(el, pixels[i]);
+        mode = 5;
+        highlightPresets();
+        sendOnePixel(i);
+      });
+      g.appendChild(el);
+    }
+  }
+  function paintCell(el, p) {
+    const on = p.r || p.g || p.b;
+    el.style.background = on ? `rgb(${p.r},${p.g},${p.b})` : '#2a2f3a';
+    el.style.color = on ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.35)';
+  }
+  function highlightPresets() {
+    document.querySelectorAll('.presets button').forEach((b) => {
+      b.classList.toggle('active', Number(b.dataset.mode) === mode);
+    });
+  }
+
+  // ---- 事件绑定 ----
+  document.querySelectorAll('.presets button').forEach((b) => {
+    b.addEventListener('click', () => { mode = Number(b.dataset.mode); highlightPresets(); sendConfig(); });
+  });
+  $('color').addEventListener('input', () => { if (mode >= 1 && mode <= 4) sendConfig(); });
+  $('brightness').addEventListener('input', () => {
+    $('brightnessVal').textContent = $('brightness').value;
+    send([CMD_BRIGHTNESS, curBrightness()]);
+  });
+  $('speed').addEventListener('input', () => {
+    $('speedVal').textContent = $('speed').value;
+    if (mode >= 2 && mode <= 4) sendConfig();
+  });
+  $('fillAll').addEventListener('click', () => {
+    const c = curColor();
+    for (let i = 0; i < LED_COUNT; i++) pixels[i] = { ...c };
+    mode = 5; highlightPresets(); renderGrid(); sendAllPixels();
+  });
+  $('clearAll').addEventListener('click', () => {
+    for (let i = 0; i < LED_COUNT; i++) pixels[i] = { r: 0, g: 0, b: 0 };
+    mode = 5; highlightPresets(); renderGrid(); sendAllPixels();
+  });
+
+  async function openDevice(dev) {
+    device = dev;
+    if (!device.opened) await device.open();
+    setStatus(`已连接: ${device.productName || 'HID'}`, 'ok');
+    setControlsEnabled(true);
+    log('已连接并打开设备');
+    highlightPresets();
+    sendConfig(); // 同步一次当前设定
+  }
+
+  $('connect').addEventListener('click', async () => {
+    if (!('hid' in navigator)) { setStatus('此浏览器不支持 WebHID（请用 Chrome/Edge）', 'err'); return; }
+    try {
+      const devices = await navigator.hid.requestDevice({ filters: [{ usagePage: USAGE_PAGE }] });
+      if (!devices.length) { log('未选择设备'); return; }
+      await openDevice(devices[0]);
+    } catch (e) { log('连接失败: ' + (e.message || e)); setStatus('连接失败', 'err'); }
+  });
+
+  $('disconnect').addEventListener('click', async () => {
+    if (device && device.opened) await device.close();
+    device = null; setStatus('已断开'); setControlsEnabled(false);
+  });
+
+  if ('hid' in navigator) {
+    navigator.hid.addEventListener('disconnect', (e) => {
+      if (device && e.device === device) { device = null; setStatus('设备已拔出'); setControlsEnabled(false); log('设备断开连接'); }
+    });
+  } else {
+    setStatus('此浏览器不支持 WebHID（请用 Chrome/Edge）', 'err');
+    $('connect').disabled = true;
+  }
+
+  renderGrid();
+  highlightPresets();
+</script>
+</body>
+</html>

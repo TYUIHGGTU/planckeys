@@ -6,19 +6,24 @@
 if BOARD_PLANCK_LEFT
 
 config ZMK_KEYBOARD_NAME
-		default "PlanckBoy"
+		default "PlanckKeys L"
 
-config ZMK_SPLIT_ROLE_CENTRAL
-		default y
-endif 
+endif
+
+if BOARD_PLANCK_RIGHT
+
+config ZMK_KEYBOARD_NAME
+		default "PlanckKeys R"
+
+endif
 
 if BOARD_PLANCK_LEFT || BOARD_PLANCK_RIGHT
 #
 # config BOARD
 # 		default "AU"
 
-config ZMK_SPLIT
-		default y
+# 两块板已改造为各自独立的完整键盘（不再是左主右从分体），
+# 因此不再开启 ZMK_SPLIT / ZMK_SPLIT_ROLE_CENTRAL。
 
 config BT_CTLR
 		default BT

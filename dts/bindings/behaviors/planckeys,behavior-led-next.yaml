@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+description: |
+  Cycle the self-developed WS2812 LED presets (solid -> breathing -> marquee ->
+  fade -> off -> ...). Zero-parameter behavior; the actual strip is driven by the
+  planckeys-led-control module (src/led_control.c).
+
+compatible: "planckeys,behavior-led-next"
+
+include: zero_param.yaml

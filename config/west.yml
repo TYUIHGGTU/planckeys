@@ -6,6 +6,8 @@ manifest:
       url-base: https://github.com/badjeff
     - name: yangxing
       url-base: https://github.com/yangxing844
+    - name: zzeneg  # host <-> keyboard raw HID (0xFF60)，供左板网页控灯
+      url-base: https://github.com/zzeneg
   projects:
     - name: zmk
       remote: zmk
@@ -23,5 +25,8 @@ manifest:
     - name: zmk-lpm009m360a-driver
       remote: yangxing
       revision: master
+    - name: zmk-raw-hid
+      remote: zzeneg
+      revision: main
   self:
     path: config
