@@ -8,6 +8,11 @@
 
 同时**关闭 ZMK 内建 underglow**，避免两者争抢同一条灯带。
 
+> **颜色与灯效解耦（关键设计）**：颜色只由「每颗基色画布」决定（网页/配色方案写入），
+> 预设模式只决定在画布之上如何做动画（整体呼吸、窗口跑马、亮度波……）。因此
+> 「配色方案（多色）+ 预设」能让方案的多种颜色一起动，而不会被压成单一颜色。
+> 早期版本预设只带一个全局基色，选完配色再选预设会变成单色——已通过此设计修复。
+
 ## 为什么要自研模块接管，而不是用内建 underglow
 
 一条 WS2812 只能有一个驱动者。ZMK 内建 underglow（`rgb_underglow.c`）和「网页每颗独立 RGB」都要调 `led_strip_update_rgb()` 写同一个 SPI 设备，二者并存必然打架。因此本方案：
@@ -28,17 +33,22 @@
 - 传输层用社区模块 [`zzeneg/zmk-raw-hid`](https://github.com/zzeneg/zmk-raw-hid)，usage page `0xFF60`，主机经 `SET_REPORT` 下发。
 - 仓库根是一个 ZMK 模块（`zephyr/module.yml` + `CMakeLists.txt` + `Kconfig` + `src/` + `dts/bindings/`），CI 自动作为 `ZMK_EXTRA_MODULES` 编入。
 - 灯带经 `EXT_POWER`（左 gpio1.6）供电；内建 underglow 关闭后没人开电，所以模块在初始化时主动 `ext_power_enable()`，并延后 200ms 渲染首帧（等供电建立）。
-- 动画由一个 `k_work_delayable` 定时器以 `CONFIG_PLANCKEYS_LED_FRAME_MS`（默认 33ms ≈ 30fps）驱动；静态模式（常亮/关灯/逐颗）只渲染一次，不占用定时器（省电）。
+- 动画由一个 `k_work_delayable` 定时器以 `CONFIG_PLANCKEYS_LED_FRAME_MS`（默认 33ms ≈ 30fps）驱动；静态模式（常亮/关灯）只渲染一次，不占用定时器（省电）。
 
 ### 下行协议（主机 → 键盘，32 字节，无 report id）
 
 | opcode | 含义 | 字节布局 |
 | ------ | ---- | -------- |
-| `0xA1` CONFIG | 设模式+基色+亮度+速度 | `[1]=mode [2]=R [3]=G [4]=B [5]=brightness [6]=speed` |
-| `0xA2` PIXELS | 设一段像素（进入逐颗模式） | `[1]=offset [2]=count`，之后每颗 3 字节 RGB（每包最多 9 颗） |
+| `0xA1` CONFIG | 设模式/亮度/速度（**只改动画，不动颜色**） | `[1]=mode [2]=brightness [3]=speed` |
+| `0xA2` PIXELS | 写画布一段（**不改模式**） | `[1]=offset [2]=count`，之后每颗 3 字节 RGB（每包最多 9 颗） |
 | `0xA3` BRIGHTNESS | 只改亮度 | `[1]=brightness` |
+| `0xA4` FILL | 用单色铺满整块画布 | `[1]=R [2]=G [3]=B` |
 
-`mode`：`0=关灯 1=常亮 2=呼吸 3=跑马 4=熔灭 5=逐颗`。28 颗全量逐颗需 4 个 `0xA2` 包（28/9）。
+`mode`：`0=关灯 1=常亮 2=呼吸 3=跑马 4=熔灭`。28 颗全量逐颗需 4 个 `0xA2` 包（28/9）。
+
+> 网页交互模型：色块/自定义色只切换「画笔颜色」；点格子或「填基色」/配色方案才写入
+> 画布（`0xA2`）；点预设只发 `0xA1`（保留画布颜色）。连接时网页先把画布同步给键盘，
+> 颜色以网页为准。
 
 ## 涉及文件
 

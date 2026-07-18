@@ -5,16 +5,20 @@
  *
  * 独占 zmk,underglow 指向的 WS2812 灯带（内建 ZMK underglow 必须关闭），
  * 提供：
- *   - 主机(WebHID/Raw HID, usage page 0xFF60) -> 键盘：每颗独立 RGB / 纯色 /
- *     亮度 / 预设模式；
- *   - 内建预设灯效：常亮(solid) / 呼吸(breathing) / 跑马(marquee) / 熔灭(fade) /
- *     关灯(off)；
+ *   - 主机(WebHID/Raw HID, usage page 0xFF60) -> 键盘：**每颗独立基色画布**
+ *     + 全局模式 / 亮度 / 速度；
+ *   - 预设灯效在「每颗基色画布」之上做动画：常亮(solid) / 呼吸(breathing) /
+ *     跑马(marquee) / 熔灭(fade) / 关灯(off)。因此配色方案（多色）也能整体
+ *     一起呼吸 / 跑马，而不是被压成单一颜色；
  *   - keymap 里 &led_next 键循环切换上述预设（见 behavior_led_next.c）。
  *
+ * 颜色只由「画布」决定，模式只决定动画；两者相互独立。
+ *
  * 下行协议（主机 -> 键盘，32 字节 report，无 report id）：
- *   0xA1 CONFIG    : [1]=mode [2]=R [3]=G [4]=B [5]=brightness [6]=speed
- *   0xA2 PIXELS    : [1]=offset [2]=count, 之后每颗 3 字节 RGB；进入逐颗模式
+ *   0xA1 CONFIG    : [1]=mode [2]=brightness [3]=speed   （只改动画，不动颜色）
+ *   0xA2 PIXELS    : [1]=offset [2]=count, 之后每颗 3 字节 RGB  （写画布，不改模式）
  *   0xA3 BRIGHTNESS: [1]=brightness
+ *   0xA4 FILL      : [1]=R [2]=G [3]=B                    （用单色铺满整块画布）
  */
 
 #include <zephyr/kernel.h>
@@ -49,6 +53,7 @@ static const struct device *const strip = DEVICE_DT_GET(STRIP_NODE);
 #define CMD_CONFIG     0xA1
 #define CMD_PIXELS     0xA2
 #define CMD_BRIGHTNESS 0xA3
+#define CMD_FILL       0xA4
 
 enum led_mode {
 	MODE_OFF = 0,
@@ -56,7 +61,6 @@ enum led_mode {
 	MODE_BREATHING = 2,
 	MODE_MARQUEE = 3,
 	MODE_FADE = 4,
-	MODE_PIXELS = 5, /* 网页逐颗设定的静态画面 */
 	MODE_COUNT
 };
 
@@ -67,10 +71,9 @@ static const enum led_mode preset_order[] = {
 
 static struct {
 	enum led_mode mode;
-	uint8_t r, g, b;    /* solid / 动画的基色 */
 	uint8_t brightness; /* 0-255 全局亮度 */
 	uint8_t speed;      /* 1-255 动画速度 */
-	struct led_rgb pixels[LED_COUNT]; /* MODE_PIXELS 时的逐颗颜色 */
+	struct led_rgb base[LED_COUNT]; /* 每颗基色画布：颜色的唯一来源 */
 } state;
 
 static struct k_mutex lock;
@@ -88,14 +91,15 @@ static inline uint8_t tri(uint8_t t)
 	return (t < 128) ? (uint8_t)(t * 2) : (uint8_t)((255 - t) * 2);
 }
 
-static inline void set_scaled(struct led_rgb *px, uint8_t r, uint8_t g, uint8_t b, uint8_t lvl)
+/* out = base 各通道按 lvl 缩放 */
+static inline void scale_px(struct led_rgb *out, const struct led_rgb *base, uint8_t lvl)
 {
-	px->r = scale8(r, lvl);
-	px->g = scale8(g, lvl);
-	px->b = scale8(b, lvl);
+	out->r = scale8(base->r, lvl);
+	out->g = scale8(base->g, lvl);
+	out->b = scale8(base->b, lvl);
 }
 
-/* 计算一帧到 out[]（调用方持有 lock）。 */
+/* 计算一帧到 out[]（调用方持有 lock）。颜色取自 state.base[]，模式只决定亮度调制。 */
 static void compute_frame(struct led_rgb *out)
 {
 	const uint8_t br = state.brightness;
@@ -107,20 +111,20 @@ static void compute_frame(struct led_rgb *out)
 
 	case MODE_SOLID:
 		for (int i = 0; i < LED_COUNT; i++) {
-			set_scaled(&out[i], state.r, state.g, state.b, br);
+			scale_px(&out[i], &state.base[i], br);
 		}
 		break;
 
 	case MODE_BREATHING: {
 		uint8_t lvl = scale8(br, tri((uint8_t)(phase & 0xFF)));
 		for (int i = 0; i < LED_COUNT; i++) {
-			set_scaled(&out[i], state.r, state.g, state.b, lvl);
+			scale_px(&out[i], &state.base[i], lvl);
 		}
 		break;
 	}
 
 	case MODE_MARQUEE: {
-		/* 一个带拖尾的亮点绕灯带移动 */
+		/* 一个带拖尾的窗口绕灯带移动，窗口内显示各颗自己的基色 */
 		const int trail = 5;
 		uint32_t head = (phase / 2U) % LED_COUNT;
 		for (int i = 0; i < LED_COUNT; i++) {
@@ -128,27 +132,23 @@ static void compute_frame(struct led_rgb *out)
 			uint8_t lvl = (d < (uint32_t)trail)
 					      ? (uint8_t)(255 - d * (255 / trail))
 					      : 0;
-			set_scaled(&out[i], state.r, state.g, state.b, scale8(br, lvl));
+			scale_px(&out[i], &state.base[i], scale8(br, lvl));
 		}
 		break;
 	}
 
 	case MODE_FADE: {
-		/* 熔灭：一道亮度波沿灯带流动，像逐颗熔化/复燃 */
+		/* 熔灭：一道亮度波沿灯带流动，各颗保持自己的基色 */
 		for (int i = 0; i < LED_COUNT; i++) {
 			uint8_t t = (uint8_t)((phase + (uint32_t)i * (256U / LED_COUNT)) & 0xFF);
 			uint8_t lvl = scale8(br, tri(t));
-			set_scaled(&out[i], state.r, state.g, state.b, lvl);
+			scale_px(&out[i], &state.base[i], lvl);
 		}
 		break;
 	}
 
-	case MODE_PIXELS:
 	default:
-		for (int i = 0; i < LED_COUNT; i++) {
-			set_scaled(&out[i], state.pixels[i].r, state.pixels[i].g,
-				   state.pixels[i].b, br);
-		}
+		memset(out, 0, sizeof(struct led_rgb) * LED_COUNT);
 		break;
 	}
 }
@@ -226,7 +226,6 @@ void planckeys_led_cycle_preset(void)
 			break;
 		}
 	}
-	/* 当前是逐颗(PIXELS)或未知模式时，从常亮开始 */
 	idx = (idx < 0) ? 0 : (idx + 1) % (int)ARRAY_SIZE(preset_order);
 	state.mode = preset_order[idx];
 
@@ -250,14 +249,11 @@ static int raw_hid_listener(const zmk_event_t *eh)
 	k_mutex_lock(&lock, K_FOREVER);
 	switch (d[0]) {
 	case CMD_CONFIG:
-		if (ev->length >= 7) {
+		if (ev->length >= 4) {
 			uint8_t m = d[1];
 			state.mode = (m < MODE_COUNT) ? (enum led_mode)m : MODE_SOLID;
-			state.r = d[2];
-			state.g = d[3];
-			state.b = d[4];
-			state.brightness = d[5];
-			state.speed = d[6] ? d[6] : 1;
+			state.brightness = d[2];
+			state.speed = d[3] ? d[3] : 1;
 		}
 		break;
 
@@ -271,17 +267,26 @@ static int raw_hid_listener(const zmk_event_t *eh)
 				if (idx >= LED_COUNT || (base + 2) >= ev->length) {
 					break;
 				}
-				state.pixels[idx].r = d[base];
-				state.pixels[idx].g = d[base + 1];
-				state.pixels[idx].b = d[base + 2];
+				state.base[idx].r = d[base];
+				state.base[idx].g = d[base + 1];
+				state.base[idx].b = d[base + 2];
 			}
-			state.mode = MODE_PIXELS;
 		}
 		break;
 
 	case CMD_BRIGHTNESS:
 		if (ev->length >= 2) {
 			state.brightness = d[1];
+		}
+		break;
+
+	case CMD_FILL:
+		if (ev->length >= 4) {
+			for (int i = 0; i < LED_COUNT; i++) {
+				state.base[i].r = d[1];
+				state.base[i].g = d[2];
+				state.base[i].b = d[3];
+			}
 		}
 		break;
 
@@ -338,11 +343,14 @@ static int planckeys_led_init(void)
 	k_mutex_init(&lock);
 
 	state.mode = MODE_SOLID;
-	state.r = 0x00;
-	state.g = 0x40;
-	state.b = 0x80;
 	state.brightness = CONFIG_PLANCKEYS_LED_DEFAULT_BRIGHTNESS;
 	state.speed = 4;
+	/* 默认画布：整块冰蓝，脱离网页也能靠 &led_next 循环出效果 */
+	for (int i = 0; i < LED_COUNT; i++) {
+		state.base[i].r = 0x00;
+		state.base[i].g = 0x40;
+		state.base[i].b = 0xFF;
+	}
 
 	enable_ext_power();
 

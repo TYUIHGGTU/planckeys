@@ -250,7 +250,7 @@
         </div>
         <h2 style="margin-top:10px;">配色方案</h2>
         <div id="schemes" class="schemes"></div>
-        <div class="hint">点色块切换当前基色（用于点格子 / 全填）；点方案一键写入逐颗模式。</div>
+        <div class="hint">颜色与灯效相互独立：色块/自定义只切换「画笔颜色」，点格子或「填基色」才写入灯带；配色方案一键写入整块颜色。之后选预设灯效，会让这些颜色一起呼吸/跑马。</div>
       </div>
 
       <div class="card axis-card">
@@ -262,7 +262,7 @@
           <button id="fillAxis">轴灯全填基色</button>
           <button id="clearAxis">轴灯全熄</button>
         </div>
-        <div class="hint">点格子用当前基色点亮，再次点击熄灭。会切换到「逐颗模式」，覆盖预设灯效。格子内数字为灯带下标。</div>
+        <div class="hint">点格子用当前画笔色点亮，再次点击熄灭；改的是每颗颜色，当前预设灯效照常运行。格子内数字为灯带下标。</div>
       </div>
     </section>
   </div>
@@ -272,9 +272,10 @@
   // ---- 须与固件 src/led_control.c 保持一致 ----
   const USAGE_PAGE = 0xFF60;
   const REPORT_SIZE = 32;
-  const CMD_CONFIG = 0xA1;     // [1]=mode [2]=R [3]=G [4]=B [5]=brightness [6]=speed
-  const CMD_PIXELS = 0xA2;     // [1]=offset [2]=count 之后每颗 3 字节 RGB
+  const CMD_CONFIG = 0xA1;     // [1]=mode [2]=brightness [3]=speed（只改动画，不动颜色）
+  const CMD_PIXELS = 0xA2;     // [1]=offset [2]=count 之后每颗 3 字节 RGB（写画布，不改模式）
   const CMD_BRIGHTNESS = 0xA3; // [1]=brightness
+  const CMD_FILL = 0xA4;       // [1]=R [2]=G [3]=B（用单色铺满整块画布）
 
   // 灯带参数（须与固件 chain-length 对齐）。单条链 28 颗：
   //   index 6..27 = 轴灯（每键一颗，共 22），index 0..5 = 底灯（正面不可见）。
@@ -363,7 +364,8 @@
 
   let device = null;
   let mode = 1;
-  const pixels = new Array(LED_COUNT).fill(null).map(() => ({ r: 0, g: 0, b: 0 }));
+  // 画布默认冰蓝，与固件默认一致；连接时会把画布同步给键盘。
+  const pixels = new Array(LED_COUNT).fill(null).map(() => ({ r: 0x00, g: 0x40, b: 0xff }));
 
   const $ = (id) => document.getElementById(id);
   const statusEl = $('status');
@@ -426,7 +428,9 @@
   function curBrightness() { return Number($('brightness').value); }
   function curSpeed() { return Number($('speed').value); }
 
-  function setBaseColor(hex, { syncConfig = true } = {}) {
+  // 当前「画笔颜色」：用于点格子上色 / 各种「填基色」。选色本身不改灯带，
+  // 需再点格子或「填基色」按钮才会写入画布。
+  function setBaseColor(hex) {
     const h = normalizeHex(hex);
     if (!h) return;
     $('color').value = h;
@@ -435,7 +439,6 @@
     document.querySelectorAll('.swatch').forEach((el) => {
       el.classList.toggle('active', el.dataset.hex === h);
     });
-    if (syncConfig && mode >= 1 && mode <= 4) sendConfig();
   }
 
   function renderPalette() {
@@ -472,7 +475,7 @@
       btn.addEventListener('click', () => applyScheme(scheme));
       schemes.appendChild(btn);
     }
-    setBaseColor($('color').value, { syncConfig: false });
+    setBaseColor($('color').value);
   }
 
   function applyScheme(scheme) {
@@ -488,12 +491,11 @@
     UNDERGLOW_INDICES.forEach((idx, i) => {
       pixels[idx] = hexToRgb(scheme.under(i, n));
     });
-    setBaseColor(scheme.primary, { syncConfig: false });
-    mode = 5;
-    highlightPresets();
+    setBaseColor(scheme.primary);
     renderCells();
     sendAllPixels();
-    log('应用配色: ' + scheme.name);
+    ensureVisible(); // 关灯时自动切常亮，否则保留当前动画，让方案颜色一起动
+    log('应用配色: ' + scheme.name + '（当前模式不变，可再选预设让它动起来）');
   }
 
   function findOutputReportId() {
@@ -517,9 +519,14 @@
   }
 
   function sendConfig() {
-    const c = curColor();
-    send([CMD_CONFIG, mode, c.r, c.g, c.b, curBrightness(), curSpeed()]);
-    log(`config mode=${mode} rgb=${c.r},${c.g},${c.b} br=${curBrightness()} sp=${curSpeed()}`);
+    // 只发模式/亮度/速度；颜色由画布(逐颗)决定，不随预设改变。
+    send([CMD_CONFIG, mode, curBrightness(), curSpeed()]);
+    log(`config mode=${mode} br=${curBrightness()} sp=${curSpeed()}`);
+  }
+
+  // 编辑画布后：若当前是「关灯」则自动切到常亮，让改动可见；否则保持当前动画。
+  function ensureVisible() {
+    if (mode === 0) { mode = 1; highlightPresets(); sendConfig(); }
   }
 
   async function sendAllPixels() {
@@ -552,9 +559,8 @@
       // 切换：亮着(任意颜色)则熄灭；灭着则用当前基色点亮。
       pixels[idx] = lit ? { r: 0, g: 0, b: 0 } : curColor();
       paintCell(el, pixels[idx]);
-      mode = 5;
-      highlightPresets();
       sendOnePixel(idx);
+      ensureVisible();
     });
     return el;
   }
@@ -611,7 +617,7 @@
   });
   function applySubset(indices, color) {
     for (const i of indices) pixels[i] = color ? { ...color } : { r: 0, g: 0, b: 0 };
-    mode = 5; highlightPresets(); renderCells(); sendAllPixels();
+    renderCells(); sendAllPixels(); ensureVisible();
   }
   $('fillAxis').addEventListener('click', () => applySubset(AXIS_INDICES, curColor()));
   $('clearAxis').addEventListener('click', () => applySubset(AXIS_INDICES, null));
@@ -626,7 +632,8 @@
     setControlsEnabled(true);
     log('已连接并打开设备');
     highlightPresets();
-    sendConfig(); // 同步一次当前设定
+    await sendAllPixels(); // 把网页画布同步到键盘（颜色以网页为准）
+    sendConfig();          // 再同步模式/亮度/速度
   }
 
   $('connect').addEventListener('click', async () => {
