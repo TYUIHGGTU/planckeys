@@ -6,7 +6,7 @@ import { HidDevice } from "./hidDevice.js";
 import { CodexSource } from "./source.js";
 import { MockSource } from "./mockSource.js";
 import { HooksSource } from "./hooksSource.js";
-import { installHooks, uninstallHooks } from "./installHooks.js";
+import { HookTargetName, installHooks, uninstallHooks } from "./installHooks.js";
 import { ThreadStatus } from "./types.js";
 
 const STATUS_GLYPH: Record<ThreadStatus, string> = {
@@ -21,17 +21,21 @@ const STATUS_GLYPH: Record<ThreadStatus, string> = {
 const main = (): void => {
   const argv = process.argv.slice(2);
 
-  // Subcommands (install/uninstall the codex hooks) run and exit.
-  const subcommand = argv.find((a) => !a.startsWith("-"));
-  if (subcommand === "install-hooks") {
+  // Subcommands (install/uninstall the hooks) run and exit.
+  const positionals = argv.filter((a) => !a.startsWith("-"));
+  const subcommand = positionals[0];
+  if (subcommand === "install-hooks" || subcommand === "uninstall-hooks") {
     setLogLevel("info");
-    const sockIdx = argv.indexOf("--sock");
-    installHooks(sockIdx >= 0 ? argv[sockIdx + 1] : undefined);
-    return;
-  }
-  if (subcommand === "uninstall-hooks") {
-    setLogLevel("info");
-    uninstallHooks();
+    const targetIdx = argv.indexOf("--target");
+    const target = (targetIdx >= 0
+      ? argv[targetIdx + 1]
+      : (positionals[1] ?? "codex")) as HookTargetName;
+    if (subcommand === "install-hooks") {
+      const sockIdx = argv.indexOf("--sock");
+      installHooks(target, sockIdx >= 0 ? argv[sockIdx + 1] : undefined);
+    } else {
+      uninstallHooks(target);
+    }
     return;
   }
 

@@ -1,8 +1,8 @@
 # Planckeys Codex Bridge
 
-把 Codex 的运行状态**被动地**反映到 Planckeys 左板的 RGB LED 上，还原 Codex Micro
-的"6 线程状态墙"体验：**你照常在任意终端的 codex CLI 或桌面端里干活，键盘灯自动
-变化**，不需要改用别的客户端、不需要在某个特定进程里对话。
+把 Codex（以及 CodeBuddy / Claude Code）的运行状态**被动地**反映到 Planckeys 左板的
+RGB LED 上，还原 Codex Micro 的"6 线程状态墙"体验：**你照常在任意终端的 CLI 或桌面端
+里干活，键盘灯自动变化**，不需要改用别的客户端、不需要在某个特定进程里对话。
 
 对应方案见 [`docs/codex-micro-parity.md`](../../docs/codex-micro-parity.md)。
 
@@ -24,6 +24,29 @@ Codex Micro 真机是靠 ChatGPT 桌面端通过**官方私有的 `0x06` HID 通
 且信任了 hook 的会话——不管哪个终端的 CLI，还是桌面端——都会触发。这正好匹配
 Codex Micro"照常用、设备被动反映"的核心体验。
 
+## 支持的工具（Codex / CodeBuddy / Claude）
+
+Codex / CodeBuddy(含 WorkBuddy 桌面端，配置在 `~/.workbuddy/settings.json`)/ Claude
+的 hooks 都是同一套 Claude-Code 派生设计，因此**本桥接对它们都生效**，用
+`install-hooks <target>` 选择（`target`：`codex`｜`codebuddy`｜`workbuddy`｜`claude`）：
+
+| 维度 | Codex | CodeBuddy | Claude Code |
+| --- | --- | --- | --- |
+| 配置文件 | `~/.codex/hooks.json`（独立文件） | `~/.codebuddy/settings.json` 的 `hooks` 键 | `~/.claude/settings.json` 的 `hooks` 键 |
+| 配置结构 / matcher 分组 | 相同 | 相同 | 相同 |
+| stdin 字段 `session_id`/`hook_event_name`/`cwd` | 有 | 有 | 有 |
+| "需输入"事件 | `PermissionRequest` | `Notification` | `Notification` |
+| 完成事件 | `Stop` | `Stop` | `Stop` |
+| 信任 | 强制 `/hooks` 按哈希信任 | settings 命令 hook 直接生效 | settings 命令 hook 直接生效 |
+
+forwarder 与 socket server 三家**完全复用**（只读 `session_id` + `hook_event_name`）；
+差异只体现在安装位置和"需输入"事件名，安装器已按 target 处理。
+
+参考：[CodeBuddy Hooks Reference](https://www.codebuddy.ai/docs/cli/hooks)、
+[CodeBuddy Hooks Guide](https://www.codebuddy.ai/docs/cli/hooks-guide)、
+[VS Code Agent hooks](https://code.visualstudio.com/docs/agent-customization/hooks)
+（"uses the same hook format as Claude Code"）。
+
 ## 状态与配色
 
 顶排 6 键作为 6 个 Agent 灯（LED `15,14,13,12,11,10`），用 `session_id` 绑定槽位：
@@ -32,8 +55,10 @@ Codex Micro"照常用、设备被动反映"的核心体验。
 | --- | --- | --- |
 | idle | 低亮白 | `SessionStart` |
 | working | 蓝 `#304FFE` | `UserPromptSubmit` / `PreToolUse` / `PostToolUse` |
-| requiresInput | 琥珀 `#FF6D00` | `PermissionRequest` |
+| requiresInput | 琥珀 `#FF6D00` | `PermissionRequest`(Codex) / `Notification`(CodeBuddy·Claude) |
 | completeUnread | 绿 `#00FF4C` | `Stop`（本轮结束） |
+
+> `Notification` 在 CodeBuddy/Claude 里也用于 60s 空闲提醒，因此可能偶尔无实际审批时也亮琥珀。
 
 底灯 `0..5` 聚合"是否需要抬头处理"。优先级仲裁：
 `requiresInput > completeUnread > working > idle > offline`。
@@ -64,19 +89,24 @@ cd tools/codex-bridge
 npm install
 npm run build
 
-# 1. 安装 hook 到 ~/.codex/hooks.json（自动备份已有文件，幂等）
-npm run install-hooks
+# 1. 安装 hook（自动备份已有文件、保留其它设置、幂等）。按你用的工具选一个或多个：
+npm run install-hooks              # Codex     -> ~/.codex/hooks.json
+npm run install-hooks:codebuddy    # CodeBuddy -> ~/.codebuddy/settings.json 的 hooks 键
+npm run install-hooks:workbuddy    # WorkBuddy桌面端 -> ~/.workbuddy/settings.json 的 hooks 键
+npm run install-hooks:claude       # Claude    -> ~/.claude/settings.json 的 hooks 键
+#   自定义 socket： node dist/index.js install-hooks workbuddy --sock /path/to.sock
 
-# 2. 在 codex CLI 里信任这些 hook（否则会被跳过）
-#    打开 codex TUI，输入斜杠命令： /hooks  -> 审查并 trust
-codex
+# 2. 让 hook 生效
+#    Codex：打开 codex TUI，输入 /hooks 审查并 trust（否则会被跳过）
+#    CodeBuddy / Claude：settings.json 命令 hook 直接生效，重启对应 CLI 即可
+codex   # 仅 Codex 需要这步做 trust
 
 # 3. USB 接左板，启动常驻 daemon
 npm start
 #   调试不接键盘： node dist/index.js --no-hid --log debug
 
-# 之后在任意终端 codex / 桌面端里干活，对应 Agent 灯就会变化。
-# 卸载 hook： npm run uninstall-hooks
+# 之后在任意终端 codex / CodeBuddy / Claude / 桌面端里干活，对应 Agent 灯就会变化。
+# 卸载： node dist/index.js uninstall-hooks <codex|codebuddy|claude>
 ```
 
 离线自测（无需 codex，打印每帧；有键盘则同时驱动）：
@@ -159,6 +189,16 @@ error 红灯等只在原生通道里存在的信号。
    失败事件 → 无 error 红灯；粒度较粗；需 `/hooks` 信任。
 6. **代码精简**：移除了删库后遗留的死代码（`acknowledge`/`release`/`buildBrightnessReport`/
    `connected` getter / `activity` 事件等推测性接口），只保留当前链路真正用到的部分。
+7. **多客户端支持**：Codex / CodeBuddy / WorkBuddy / Claude 的 hooks 同源（Claude-Code
+   派生），forwarder 与 socket server 完全复用；`install-hooks <target>` 只切换配置文件与
+   "需输入"事件名（Codex 用 `PermissionRequest`，Claude 家族用 `Notification`）。
+8. **配置目录坑（已修）**：CodeBuddy CLI/IDE 读 `~/.codebuddy/`，但 **WorkBuddy 桌面端读
+   `~/.workbuddy/`**——装错目录客户端就完全没反应。安装器为每个 target 写对应文件并保留
+   其它已有设置键。
+9. **端到端验证**：用 `cbc -p`（CodeBuddy CLI 无头）实测通过——`SessionStart→UserPromptSubmit
+   →Stop` 依次点亮 idle→working→complete，证明"照常用、被动反映"链路成立。
+   已知小瑕疵：CodeBuddy 的 `Notification`（含 60s 空闲提醒）有时带不同的 `session_id`，
+   会让另一颗灯偶发亮琥珀；不影响主流程。
 
 ## 目录结构
 
@@ -176,6 +216,6 @@ src/
   hookEvents.ts     # hook 事件 -> 状态映射（session_id 绑定）
   hookForwarder.ts  # 每事件进程：stdin -> unix socket（由 codex 调用）
   hooksSource.ts    # 常驻 daemon：unix socket server
-  installHooks.ts   # 安装/卸载 ~/.codex/hooks.json（幂等、自动备份）
+  installHooks.ts   # 安装/卸载各客户端 hooks（codex/codebuddy/workbuddy/claude；幂等、自动备份）
   mockSource.ts     # 离线模拟器（LED 自测，含 error 色演示）
 ```

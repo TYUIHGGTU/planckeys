@@ -9,3 +9,15 @@ export const defaultSocketPath = (): string =>
 /** User-level codex hooks config file. */
 export const codexHooksPath = (): string =>
   join(homedir(), ".codex", "hooks.json");
+
+/** User-level CodeBuddy settings file (hooks live under the `hooks` key). */
+export const codebuddySettingsPath = (): string =>
+  join(homedir(), ".codebuddy", "settings.json");
+
+/** User-level Claude Code settings file (hooks live under the `hooks` key). */
+export const claudeSettingsPath = (): string =>
+  join(homedir(), ".claude", "settings.json");
+
+/** User-level WorkBuddy desktop settings file (hooks live under the `hooks` key). */
+export const workbuddySettingsPath = (): string =>
+  join(homedir(), ".workbuddy", "settings.json");

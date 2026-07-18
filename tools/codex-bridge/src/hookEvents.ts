@@ -40,7 +40,11 @@ export const mapHook = (p: HookPayload): MappedHook => {
     case "PostToolUse":
       return { kind: "status", threadId, status: ThreadStatus.Working };
 
+    // Codex fires `PermissionRequest`; Claude / CodeBuddy use `Notification`
+    // for permission prompts (Notification also covers idle reminders, so it
+    // may occasionally show amber without a real approval pending).
     case "PermissionRequest":
+    case "Notification":
       return { kind: "status", threadId, status: ThreadStatus.RequiresInput };
 
     case "Stop":
@@ -50,13 +54,3 @@ export const mapHook = (p: HookPayload): MappedHook => {
       return null;
   }
 };
-
-/** Hook events we register so codex forwards them to the bridge. */
-export const OBSERVED_HOOK_EVENTS = [
-  "SessionStart",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "PermissionRequest",
-  "Stop",
-] as const;

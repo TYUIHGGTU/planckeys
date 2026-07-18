@@ -12,8 +12,11 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "mock": "tsx src/index.ts --mock",
-    "install-hooks": "node dist/index.js install-hooks",
-    "uninstall-hooks": "node dist/index.js uninstall-hooks",
+    "install-hooks": "node dist/index.js install-hooks codex",
+    "install-hooks:codebuddy": "node dist/index.js install-hooks codebuddy",
+    "install-hooks:workbuddy": "node dist/index.js install-hooks workbuddy",
+    "install-hooks:claude": "node dist/index.js install-hooks claude",
+    "uninstall-hooks": "node dist/index.js uninstall-hooks codex",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "engines": {
