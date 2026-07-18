@@ -1,0 +1,76 @@
+import { LogLevel } from "./logger.js";
+import { defaultSocketPath } from "./paths.js";
+
+export type SourceKind = "hooks" | "mock";
+
+export interface BridgeConfig {
+  /** Where thread state comes from. `hooks` is the real, global source. */
+  source: SourceKind;
+  /** Unix socket path the hooks source listens on / forwarder connects to. */
+  socketPath: string;
+  /** Global LED brightness pushed via 0xA1 (0..255). */
+  brightness: number;
+  /**
+   * Idle brightness factor (0..1) applied to the white idle color so idle
+   * threads glow dimly instead of blinding white.
+   */
+  idleFactor: number;
+  /** Light up the underglow (0..5) as an aggregate "needs attention" signal. */
+  underglow: boolean;
+  /** Underglow aggregate brightness factor (0..1). */
+  underglowFactor: number;
+  /** Reconnect backoff (ms) for the HID device. */
+  hidReconnectMs: number;
+  /** Slot binding strategy. */
+  binding: "recent" | "fixed";
+  /** Never open the HID device; only log rendered frames (for debugging). */
+  dryRun: boolean;
+  logLevel: LogLevel;
+}
+
+const num = (v: string | undefined, fallback: number): number => {
+  if (v === undefined) return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const bool = (v: string | undefined, fallback: boolean): boolean => {
+  if (v === undefined) return fallback;
+  return v === "1" || v.toLowerCase() === "true" || v.toLowerCase() === "yes";
+};
+
+export const loadConfig = (argv: string[]): BridgeConfig => {
+  const flags = new Set(argv);
+  const env = process.env;
+
+  const getFlagValue = (name: string): string | undefined => {
+    const idx = argv.indexOf(name);
+    if (idx >= 0 && idx + 1 < argv.length) return argv[idx + 1];
+    const prefixed = argv.find((a) => a.startsWith(`${name}=`));
+    return prefixed ? prefixed.slice(name.length + 1) : undefined;
+  };
+
+  const logLevel = (getFlagValue("--log") ??
+    env.CODEX_BRIDGE_LOG ??
+    "info") as LogLevel;
+
+  const source: SourceKind =
+    flags.has("--mock") || bool(env.CODEX_BRIDGE_MOCK, false) ? "mock" : "hooks";
+
+  return {
+    source,
+    socketPath: getFlagValue("--sock") ?? defaultSocketPath(),
+    brightness: num(
+      getFlagValue("--brightness") ?? env.CODEX_BRIDGE_BRIGHTNESS,
+      160,
+    ),
+    idleFactor: num(env.CODEX_BRIDGE_IDLE_FACTOR, 0.12),
+    underglow: bool(env.CODEX_BRIDGE_UNDERGLOW, true),
+    underglowFactor: num(env.CODEX_BRIDGE_UNDERGLOW_FACTOR, 0.35),
+    hidReconnectMs: num(env.CODEX_BRIDGE_HID_RECONNECT_MS, 2000),
+    binding:
+      (getFlagValue("--binding") as "recent" | "fixed" | undefined) ?? "recent",
+    dryRun: flags.has("--no-hid") || flags.has("--dry-run"),
+    logLevel,
+  };
+};

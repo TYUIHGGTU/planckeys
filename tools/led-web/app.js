@@ -175,8 +175,7 @@ function curColor() { return hexToRgb($('color').value); }
 function curBrightness() { return Number($('brightness').value); }
 function curSpeed() { return Number($('speed').value); }
 
-// 当前「画笔颜色」：用于点格子上色 / 各种「填基色」。选色本身不改灯带，
-// 需再点格子或「填基色」按钮才会写入画布。
+// 当前「画笔颜色」：用于点格子上色。只更新画笔与界面，不写入灯带。
 function setBaseColor(hex) {
   const h = normalizeHex(hex);
   if (!h) return;
@@ -186,6 +185,15 @@ function setBaseColor(hex) {
   document.querySelectorAll('.swatch').forEach((el) => {
     el.classList.toggle('active', el.dataset.hex === h);
   });
+}
+
+// 选色即生效：设为画笔颜色并立即把整条灯带铺成该颜色。
+function applyBaseColor(hex) {
+  const h = normalizeHex(hex);
+  if (!h) return;
+  setBaseColor(h);
+  stopDigitPlayback();
+  applySubset([...AXIS_INDICES, ...UNDERGLOW_INDICES], hexToRgb(h));
 }
 
 function renderPalette() {
@@ -198,7 +206,7 @@ function renderPalette() {
     btn.dataset.hex = hex;
     btn.style.background = hex;
     btn.title = hex;
-    btn.addEventListener('click', () => setBaseColor(hex));
+    btn.addEventListener('click', () => applyBaseColor(hex));
     box.appendChild(btn);
   }
   const schemes = $('schemes');
@@ -346,10 +354,12 @@ function highlightPresets() {
 document.querySelectorAll('.presets button').forEach((b) => {
   b.addEventListener('click', () => { mode = Number(b.dataset.mode); highlightPresets(); sendConfig(); });
 });
+// 拖动取色器时先预览画笔，松手（change）后立即整条生效。
 $('color').addEventListener('input', () => setBaseColor($('color').value));
+$('color').addEventListener('change', () => applyBaseColor($('color').value));
 $('hex').addEventListener('change', () => {
   const h = normalizeHex($('hex').value);
-  if (h) setBaseColor(h);
+  if (h) applyBaseColor(h);
   else $('hex').value = $('color').value;
 });
 $('hex').addEventListener('keydown', (e) => {
@@ -371,7 +381,6 @@ $('fillAxis').addEventListener('click', () => { stopDigitPlayback(); applySubset
 $('clearAxis').addEventListener('click', () => { stopDigitPlayback(); applySubset(AXIS_INDICES, null); });
 $('fillUnder').addEventListener('click', () => applySubset(UNDERGLOW_INDICES, curColor()));
 $('clearUnder').addEventListener('click', () => applySubset(UNDERGLOW_INDICES, null));
-$('fillAll').addEventListener('click', () => { stopDigitPlayback(); applySubset([...AXIS_INDICES, ...UNDERGLOW_INDICES], curColor()); });
 
 function setDigitCarouselControls(playing) {
   $('digitStart').disabled = playing;
