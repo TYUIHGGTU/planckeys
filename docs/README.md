@@ -11,6 +11,7 @@
 |------|------|
 | [`split-to-independent.md`](./split-to-independent.md) | 分体 → 两台独立键盘的原理与逐项改动（矩阵变换、物理布局、keymap、json、conf） |
 | [`led-web-control.md`](./led-web-control.md) | 自研模块接管 WS2812 + 网页控灯：架构、下行协议、涉及文件、**构建踩坑记录**、使用步骤 |
+| [`codex-micro-parity.md`](./codex-micro-parity.md) | 基于 28 颗独立 RGB LED 评估 Planckeys 对 Codex Micro 的可行、受限与不可行能力 |
 
 ---
 
