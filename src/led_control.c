@@ -28,7 +28,7 @@
 #include <raw_hid/events.h>
 
 #if IS_ENABLED(CONFIG_ZMK_EXT_POWER)
-#include <zmk/ext_power.h>
+#include <drivers/ext_power.h>
 #endif
 
 #include "planckeys_led.h"
@@ -304,13 +304,15 @@ ZMK_SUBSCRIPTION(planckeys_led_raw_hid, raw_hid_received_event);
 #if IS_ENABLED(CONFIG_ZMK_EXT_POWER)
 static void enable_ext_power(void)
 {
-	const struct device *ep = DEVICE_DT_GET_ANY(zmk_ext_power_generic);
+	const struct device *ep = device_get_binding("EXT_POWER");
 
-	if (ep && device_is_ready(ep)) {
+	if (ep != NULL) {
 		int ret = ext_power_enable(ep);
 		if (ret < 0) {
 			LOG_WRN("ext_power_enable failed: %d", ret);
 		}
+	} else {
+		LOG_WRN("EXT_POWER device not found");
 	}
 }
 #else
