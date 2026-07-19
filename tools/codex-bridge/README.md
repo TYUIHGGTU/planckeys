@@ -31,14 +31,14 @@ Codex / CodeBuddy(含 WorkBuddy 桌面端，配置在 `~/.workbuddy/settings.jso
 （扁平 `[{ command }]` + 顶层 `version`）。forwarder / socket server **完全复用**，用
 `install-hooks <target>` 选择（`codex`｜`codebuddy`｜`workbuddy`｜`claude`｜`cursor`）：
 
-| 维度 | Codex | CodeBuddy | Claude Code | Cursor |
-| --- | --- | --- | --- | --- |
-| 配置文件 | `~/.codex/hooks.json` | `~/.codebuddy/settings.json` 的 `hooks` | `~/.claude/settings.json` 的 `hooks` | `~/.cursor/hooks.json` |
-| 配置结构 | 嵌套 matcher 分组 | 同左 | 同左 | 扁平 `[{ command }]` + `version: 1` |
-| 线程键 | `session_id` | `session_id` | `session_id` | `conversation_id`（`sessionStart` 亦有 `session_id`） |
-| "需输入"事件 | `PermissionRequest` | `Notification` | `Notification` | 无（不琥珀闪） |
-| 完成事件 | `Stop` | `Stop` | `Stop` | `stop`（`status: error` 可黄闪） |
-| 信任 | `/hooks` 按哈希信任 | 重启即可 | 重启即可 | hooks.json 热加载；必要时重启 Cursor |
+| 维度         | Codex                 | CodeBuddy                               | Claude Code                          | Cursor                                                |
+| ------------ | --------------------- | --------------------------------------- | ------------------------------------ | ----------------------------------------------------- |
+| 配置文件     | `~/.codex/hooks.json` | `~/.codebuddy/settings.json` 的 `hooks` | `~/.claude/settings.json` 的 `hooks` | `~/.cursor/hooks.json`                                |
+| 配置结构     | 嵌套 matcher 分组     | 同左                                    | 同左                                 | 扁平 `[{ command }]` + `version: 1`                   |
+| 线程键       | `session_id`          | `session_id`                            | `session_id`                         | `conversation_id`（`sessionStart` 亦有 `session_id`） |
+| "需输入"事件 | `PermissionRequest`   | `Notification`                          | `Notification`                       | 无（不琥珀闪）                                        |
+| 完成事件     | `Stop`                | `Stop`                                  | `Stop`                               | `stop`（`status: error` 可黄闪）                      |
+| 信任         | `/hooks` 按哈希信任   | 重启即可                                | 重启即可                             | hooks.json 热加载；必要时重启 Cursor                  |
 
 参考：[CodeBuddy Hooks](https://www.codebuddy.ai/docs/cli/hooks)、
 [Cursor Hooks](https://cursor.com/docs/hooks)、
@@ -55,13 +55,13 @@ Codex / CodeBuddy(含 WorkBuddy 桌面端，配置在 `~/.workbuddy/settings.jso
 
 ### 平台色（身份）
 
-| 平台 | 颜色 |
-| --- | --- |
-| Cursor | 冷灰白 `#E8EEF5` |
-| CodeBuddy | 紫 `#7C4DFF` |
-| WorkBuddy | 绿 `#00C853` |
-| Codex | 蓝 `#304FFE` |
-| Claude（附带支持） | 暖橙 `#D97757` |
+| 平台               | 颜色             |
+| ------------------ | ---------------- |
+| Cursor             | 冷灰白 `#E8EEF5` |
+| CodeBuddy          | 紫 `#7C4DFF`     |
+| WorkBuddy          | 绿 `#00C853`     |
+| Codex              | 蓝 `#304FFE`     |
+| Claude（附带支持） | 暖橙 `#D97757`   |
 
 `install-hooks <target>` 会把平台名写进 forwarder 命令行；每条 hook 经 forwarder
 打上 `_planckeys_platform` 后送入 daemon。
@@ -70,13 +70,13 @@ Codex / CodeBuddy(含 WorkBuddy 桌面端，配置在 `~/.workbuddy/settings.jso
 
 固件保持 `Solid`；所有图形/动画由 host 逐像素（0xA2）驱动。
 
-| 状态 | 主字区表现 | 触发事件 |
-| --- | --- | --- |
-| idle / offline | 灭 | `SessionStart` / Cursor `sessionStart`；空槽 |
-| working | 平台色**贪吃蛇**巡游（默认）；或平台色**软呼吸**（`--working breathe`） | `UserPromptSubmit`·`PreToolUse`·`PostToolUse` / Cursor `beforeSubmitPrompt`·`preToolUse`·`postToolUse` |
-| completeUnread | 平台色**任务序号**（1–9 循环）**高亮 5s** → **极暗 soft-unread**（直到下一轮） | `Stop` / Cursor `stop` |
-| requiresInput | 琥珀 `#FF6D00` **`?` 快闪** | `PermissionRequest`(Codex) / `Notification`(CodeBuddy·Claude)；Cursor 无此事件 |
-| error | 黄 `#FFC107` **`!` 快闪** | 仅 Cursor `stop` 且 `status: error`（其它平台 hooks 无独立失败事件） |
+| 状态           | 主字区表现                                                                     | 触发事件                                                                                               |
+| -------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| idle / offline | 灭                                                                             | `SessionStart` / Cursor `sessionStart`；空槽                                                           |
+| working        | 平台色动画，可选：**贪吃蛇**（默认）/ **loading 圈** / **音柱** / **软呼吸**   | `UserPromptSubmit`·`PreToolUse`·`PostToolUse` / Cursor `beforeSubmitPrompt`·`preToolUse`·`postToolUse` |
+| completeUnread | 平台色**任务序号**（1–9 循环）**高亮 5s** → **极暗 soft-unread**（直到下一轮） | `Stop` / Cursor `stop`                                                                                 |
+| requiresInput  | 琥珀 `#FF6D00` **`?` 快闪**                                                    | `PermissionRequest`(Codex) / `Notification`(CodeBuddy·Claude)；Cursor 无此事件                         |
+| error          | 黄 `#FFC107` **`!` 快闪**                                                      | 仅 Cursor `stop` 且 `status: error`（其它平台 hooks 无独立失败事件）                                   |
 
 - **任务序号**：每平台一个自增计数器，新会话绑定槽位时分配 `1..9`（循环）；完成时以点阵数字显示，
   「形状=第几个任务，颜色=哪个平台」。
@@ -163,25 +163,25 @@ npm run mock
 
 命令行标志或环境变量（标志优先）：
 
-| 标志 | 环境变量 | 默认 | 说明 |
-| --- | --- | --- | --- |
-| `--mock` | `CODEX_BRIDGE_MOCK` | false | 用内置模拟器替代真实数据源（离线自测） |
-| `--sock <path>` | `PLANCKEYS_BRIDGE_SOCK` | `$TMPDIR/planckeys-codex-bridge.sock` | daemon 与 forwarder 交会的 unix socket |
-| `--no-hid` / `--dry-run` | — | false | 不打开键盘，只打印帧（调试） |
-| `--brightness <0-255>` | `CODEX_BRIDGE_BRIGHTNESS` | 160 | 全局亮度（0xA1） |
-| `--binding recent\|fixed` | — | recent | 槽位绑定策略 |
-| `--log <level>` | `CODEX_BRIDGE_LOG` | info | 日志级别 |
-| `--working snake\|breathe` | `CODEX_BRIDGE_WORKING_EFFECT` | snake | working 灯效：贪吃蛇 / 软呼吸 |
-| — | `CODEX_BRIDGE_SNAKE_STEP_MS` | 320 | 贪吃蛇每格步进间隔（越大越慢） |
-| — | `CODEX_BRIDGE_IDLE_OFF_MS` | 180000 | 无活动自动熄灭时长（0 关闭）；3 分钟 |
-| — | `CODEX_BRIDGE_SOFT_UNREAD_FACTOR` | 0.08 | 完成 5s 后的 soft-unread 亮度（仍认 `CODEX_BRIDGE_IDLE_FACTOR` 作别名） |
-| — | `CODEX_BRIDGE_COMPLETE_HOLD_MS` | 5000 | 完成高亮常亮时长 |
-| — | `CODEX_BRIDGE_BREATHE_PERIOD_MS` | 2000 | working 软呼吸周期 |
-| — | `CODEX_BRIDGE_BLINK_PERIOD_MS` | 400 | 需输入 / error 快闪周期 |
-| — | `CODEX_BRIDGE_ANIM_FPS` | 15 | host 侧动画推帧率 |
-| — | `CODEX_BRIDGE_UNDERGLOW` | true | 底灯聚合告警开关 |
-| — | `CODEX_BRIDGE_UNDERGLOW_FACTOR` | 0.35 | 底灯亮度系数 |
-| — | `CODEX_BRIDGE_HID_RECONNECT_MS` | 2000 | HID 重连间隔 |
+| 标志                                           | 环境变量                          | 默认                                  | 说明                                                                    |
+| ---------------------------------------------- | --------------------------------- | ------------------------------------- | ----------------------------------------------------------------------- |
+| `--mock`                                       | `CODEX_BRIDGE_MOCK`               | false                                 | 用内置模拟器替代真实数据源（离线自测）                                  |
+| `--sock <path>`                                | `PLANCKEYS_BRIDGE_SOCK`           | `$TMPDIR/planckeys-codex-bridge.sock` | daemon 与 forwarder 交会的 unix socket                                  |
+| `--no-hid` / `--dry-run`                       | —                                 | false                                 | 不打开键盘，只打印帧（调试）                                            |
+| `--brightness <0-255>`                         | `CODEX_BRIDGE_BRIGHTNESS`         | 160                                   | 全局亮度（0xA1）                                                        |
+| `--binding recent\|fixed`                      | —                                 | recent                                | 槽位绑定策略                                                            |
+| `--log <level>`                                | `CODEX_BRIDGE_LOG`                | info                                  | 日志级别                                                                |
+| `--working snake\|spinner\|equalizer\|breathe` | `CODEX_BRIDGE_WORKING_EFFECT`     | snake                                 | working 灯效：贪吃蛇 / loading 圈 / 音柱 / 软呼吸                       |
+| —                                              | `CODEX_BRIDGE_SNAKE_STEP_MS`      | 320                                   | 贪吃蛇 / spinner 步进间隔（越大越慢）                                   |
+| —                                              | `CODEX_BRIDGE_IDLE_OFF_MS`        | 180000                                | 无活动自动熄灭时长（0 关闭）；3 分钟                                    |
+| —                                              | `CODEX_BRIDGE_SOFT_UNREAD_FACTOR` | 0.08                                  | 完成 5s 后的 soft-unread 亮度（仍认 `CODEX_BRIDGE_IDLE_FACTOR` 作别名） |
+| —                                              | `CODEX_BRIDGE_COMPLETE_HOLD_MS`   | 5000                                  | 完成高亮常亮时长                                                        |
+| —                                              | `CODEX_BRIDGE_BREATHE_PERIOD_MS`  | 2000                                  | working 软呼吸周期                                                      |
+| —                                              | `CODEX_BRIDGE_BLINK_PERIOD_MS`    | 400                                   | 需输入 / error 快闪周期                                                 |
+| —                                              | `CODEX_BRIDGE_ANIM_FPS`           | 15                                    | host 侧动画推帧率                                                       |
+| —                                              | `CODEX_BRIDGE_UNDERGLOW`          | true                                  | 底灯聚合告警开关                                                        |
+| —                                              | `CODEX_BRIDGE_UNDERGLOW_FACTOR`   | 0.35                                  | 底灯亮度系数                                                            |
+| —                                              | `CODEX_BRIDGE_HID_RECONNECT_MS`   | 2000                                  | HID 重连间隔                                                            |
 
 > 升级到平台色方案后请**重新** `install-hooks <target>`，以便 forwarder 带上平台参数。
 
@@ -249,7 +249,7 @@ usage page `0xFF60`、32 字节 report、`0xA2` 每包最多 9 颗 RGB。见 `sr
    `~/.workbuddy/`**——装错目录客户端就完全没反应。安装器为每个 target 写对应文件并保留
    其它已有设置键。
 9. **端到端验证**：用 `cbc -p`（CodeBuddy CLI 无头）实测通过——`SessionStart→UserPromptSubmit
-   →Stop` 依次点亮 idle→working→complete，证明"照常用、被动反映"链路成立。
+→Stop` 依次点亮 idle→working→complete，证明"照常用、被动反映"链路成立。
    已知小瑕疵：CodeBuddy 的 `Notification`（含 60s 空闲提醒）有时带不同的 `session_id`，
    会让另一颗灯偶发亮琥珀；不影响主流程。
 10. **Cursor 原生 hooks**：Cursor 用 `~/.cursor/hooks.json`（扁平 `[{ command }]` + 必需的
@@ -282,4 +282,11 @@ src/
   hooksSource.ts    # 常驻 daemon：unix socket server
   installHooks.ts   # 安装/卸载各客户端 hooks（含 cursor 扁平格式；幂等、自动备份）
   mockSource.ts     # 离线模拟器（多平台色 / 动画自测）
+```
+
+```
+node dist/index.js --log info                 # 默认贪吃蛇
+node dist/index.js --working spinner          # loading 圈
+node dist/index.js --working equalizer        # 音柱
+node dist/index.js --mock --working spinner   # 离线预览
 ```

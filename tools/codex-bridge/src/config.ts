@@ -3,8 +3,15 @@ import { defaultSocketPath } from "./paths.js";
 
 export type SourceKind = "hooks" | "mock";
 
-/** Working animation style. Extensible; "snake" is default, "breathe" is calmer. */
-export type WorkingEffect = "snake" | "breathe";
+/** Working animation style. Extensible; "snake" is default. */
+export type WorkingEffect = "snake" | "breathe" | "equalizer" | "spinner";
+
+const WORKING_EFFECTS: readonly WorkingEffect[] = [
+  "snake",
+  "breathe",
+  "equalizer",
+  "spinner",
+];
 
 export interface BridgeConfig {
   /** Where thread state comes from. `hooks` is the real, global source. */
@@ -93,11 +100,12 @@ export const loadConfig = (argv: string[]): BridgeConfig => {
     breathePeriodMs: num(env.CODEX_BRIDGE_BREATHE_PERIOD_MS, 2000),
     blinkPeriodMs: num(env.CODEX_BRIDGE_BLINK_PERIOD_MS, 400),
     animFps: num(env.CODEX_BRIDGE_ANIM_FPS, 15),
-    workingEffect:
-      (getFlagValue("--working") as WorkingEffect | undefined) ??
-      ((env.CODEX_BRIDGE_WORKING_EFFECT as WorkingEffect | undefined) === "breathe"
-        ? "breathe"
-        : "snake"),
+    workingEffect: ((): WorkingEffect => {
+      const raw = getFlagValue("--working") ?? env.CODEX_BRIDGE_WORKING_EFFECT;
+      return raw && (WORKING_EFFECTS as readonly string[]).includes(raw)
+        ? (raw as WorkingEffect)
+        : "snake";
+    })(),
     snakeStepMs: num(env.CODEX_BRIDGE_SNAKE_STEP_MS, 320),
     idleOffMs: num(env.CODEX_BRIDGE_IDLE_OFF_MS, 180000),
     underglow: bool(env.CODEX_BRIDGE_UNDERGLOW, true),

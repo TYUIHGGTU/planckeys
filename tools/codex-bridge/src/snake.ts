@@ -31,7 +31,8 @@ export class SnakeAnimator {
   private lastStepAt = 0;
   private color: Rgb = { r: 255, g: 255, b: 255 };
   private ownerKey = "";
-  private readonly maxLen = MAIN_W * MAIN_H - 2;
+  /** Fixed snake length — stays readable on the small matrix (no growth). */
+  private readonly length = 3;
   /** Contrast color for the food so it stands apart from any platform hue. */
   private readonly foodColor: Rgb = { r: 255, g: 176, b: 0 };
 
@@ -45,12 +46,11 @@ export class SnakeAnimator {
 
   private reset(): void {
     const cy = Math.floor(MAIN_H / 2);
-    // Start 3 long so the head->tail direction reads immediately.
-    this.body = [
-      { x: 2, y: cy },
-      { x: 1, y: cy },
-      { x: 0, y: cy },
-    ];
+    // Fixed-length body laid out horizontally; head at the right.
+    this.body = [];
+    for (let i = this.length - 1; i >= 0; i--) {
+      this.body.push({ x: Math.min(i, MAIN_W - 1), y: cy });
+    }
     this.placeFood();
   }
 
@@ -108,13 +108,10 @@ export class SnakeAnimator {
     );
     const next = candidates[0];
     this.body.unshift(next);
-
-    if (next.x === this.food.x && next.y === this.food.y) {
-      if (this.body.length > this.maxLen) this.body.pop();
-      this.placeFood();
-    } else {
-      this.body.pop();
-    }
+    const ate = next.x === this.food.x && next.y === this.food.y;
+    // Fixed length: always drop the tail (no growth on eating).
+    this.body.pop();
+    if (ate) this.placeFood();
   }
 
   render(): PixelWrite[] {

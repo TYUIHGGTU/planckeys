@@ -19,6 +19,7 @@ import { BridgeConfig } from "./config.js";
 import { blinkFactor, breatheFactor } from "./effects.js";
 import { PixelWrite, stampGlyph, taskGlyphKey } from "./glyphs.js";
 import { SnakeAnimator } from "./snake.js";
+import { renderEqualizer, renderSpinner } from "./workingEffects.js";
 
 const emptySlot = (): SlotState => ({
   threadId: null,
@@ -255,22 +256,30 @@ export class ThreadStore {
     const platform = PLATFORM_COLOR[active.platform];
     switch (active.status) {
       case ThreadStatus.Working: {
-        if (this.config.workingEffect === "snake") {
-          this.snake.ensureOwner(active.threadId ?? "", platform);
-          this.snake.step(now, this.config.snakeStepMs);
-          return this.snake.render();
-        }
-        // breathe: fill the whole main area
-        const f = breatheFactor(now, this.config.breathePeriodMs);
-        const color = scaleRgb(platform, f);
-        const writes: PixelWrite[] = [];
-        for (let r = 0; r < MATRIX_ROWS; r++) {
-          for (let c = 0; c < 3; c++) {
-            const idx = cellIndex(r, c);
-            if (idx !== null) writes.push({ index: idx, color });
+        switch (this.config.workingEffect) {
+          case "snake": {
+            this.snake.ensureOwner(active.threadId ?? "", platform);
+            this.snake.step(now, this.config.snakeStepMs);
+            return this.snake.render();
+          }
+          case "spinner":
+            return renderSpinner(platform, now, this.config.snakeStepMs);
+          case "equalizer":
+            return renderEqualizer(platform, now);
+          case "breathe":
+          default: {
+            const f = breatheFactor(now, this.config.breathePeriodMs);
+            const color = scaleRgb(platform, f);
+            const writes: PixelWrite[] = [];
+            for (let r = 0; r < MATRIX_ROWS; r++) {
+              for (let c = 0; c < 3; c++) {
+                const idx = cellIndex(r, c);
+                if (idx !== null) writes.push({ index: idx, color });
+              }
+            }
+            return writes;
           }
         }
-        return writes;
       }
       case ThreadStatus.RequiresInput: {
         const f = blinkFactor(now, this.config.blinkPeriodMs);
