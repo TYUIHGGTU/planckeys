@@ -3,6 +3,9 @@ import { defaultSocketPath } from "./paths.js";
 
 export type SourceKind = "hooks" | "mock";
 
+/** Working animation style. Extensible; "snake" is default, "breathe" is calmer. */
+export type WorkingEffect = "snake" | "breathe";
+
 export interface BridgeConfig {
   /** Where thread state comes from. `hooks` is the real, global source. */
   source: SourceKind;
@@ -11,10 +14,28 @@ export interface BridgeConfig {
   /** Global LED brightness pushed via 0xA1 (0..255). */
   brightness: number;
   /**
-   * Idle brightness factor (0..1) applied to the white idle color so idle
-   * threads glow dimly instead of blinding white.
+   * Soft-unread brightness factor (0..1) after the complete bright-hold window.
+   * Keeps a faint platform-colored reminder until the next turn.
    */
-  idleFactor: number;
+  softUnreadFactor: number;
+  /** How long complete stays at full brightness before soft-unread (ms). */
+  completeHoldMs: number;
+  /** Host-side breathe period for working slots (ms). */
+  breathePeriodMs: number;
+  /** Host-side blink period for requiresInput / error (ms). */
+  blinkPeriodMs: number;
+  /** Animation / complete-hold tick rate (frames per second). */
+  animFps: number;
+  /** Working animation: "snake" (default) or "breathe". */
+  workingEffect: WorkingEffect;
+  /** Snake advance interval (ms) when workingEffect === "snake". */
+  snakeStepMs: number;
+  /**
+   * Auto-off: when nothing is working/needs-input/errored, blank the whole
+   * board after this many ms since the last event (Codex Micro style, 3 min).
+   * Any new event wakes it. 0 disables.
+   */
+  idleOffMs: number;
   /** Light up the underglow (0..5) as an aggregate "needs attention" signal. */
   underglow: boolean;
   /** Underglow aggregate brightness factor (0..1). */
@@ -64,7 +85,21 @@ export const loadConfig = (argv: string[]): BridgeConfig => {
       getFlagValue("--brightness") ?? env.CODEX_BRIDGE_BRIGHTNESS,
       160,
     ),
-    idleFactor: num(env.CODEX_BRIDGE_IDLE_FACTOR, 0.12),
+    softUnreadFactor: num(
+      env.CODEX_BRIDGE_SOFT_UNREAD_FACTOR ?? env.CODEX_BRIDGE_IDLE_FACTOR,
+      0.08,
+    ),
+    completeHoldMs: num(env.CODEX_BRIDGE_COMPLETE_HOLD_MS, 5000),
+    breathePeriodMs: num(env.CODEX_BRIDGE_BREATHE_PERIOD_MS, 2000),
+    blinkPeriodMs: num(env.CODEX_BRIDGE_BLINK_PERIOD_MS, 400),
+    animFps: num(env.CODEX_BRIDGE_ANIM_FPS, 15),
+    workingEffect:
+      (getFlagValue("--working") as WorkingEffect | undefined) ??
+      ((env.CODEX_BRIDGE_WORKING_EFFECT as WorkingEffect | undefined) === "breathe"
+        ? "breathe"
+        : "snake"),
+    snakeStepMs: num(env.CODEX_BRIDGE_SNAKE_STEP_MS, 320),
+    idleOffMs: num(env.CODEX_BRIDGE_IDLE_OFF_MS, 180000),
     underglow: bool(env.CODEX_BRIDGE_UNDERGLOW, true),
     underglowFactor: num(env.CODEX_BRIDGE_UNDERGLOW_FACTOR, 0.35),
     hidReconnectMs: num(env.CODEX_BRIDGE_HID_RECONNECT_MS, 2000),

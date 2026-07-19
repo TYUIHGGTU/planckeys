@@ -51,6 +51,58 @@ export const AGENT_LED_INDICES = [15, 14, 13, 12, 11, 10] as const;
 
 export const AGENT_SLOT_COUNT = AGENT_LED_INDICES.length;
 
+/**
+ * All front-visible axis LEDs (chain index 6..27, i.e. every key LED on the
+ * left board). Underglow 0..5 is hidden and handled separately. Used by the
+ * "whole board = active platform color" render mode.
+ */
+export const VISIBLE_LED_INDICES: readonly number[] = Array.from(
+  { length: LED_COUNT - UNDERGLOW_INDICES.length },
+  (_, i) => i + UNDERGLOW_INDICES.length,
+);
+
+/**
+ * Axis LEDs arranged as the physical dot-matrix (board rotated so it reads as
+ * a portrait 4-col × 6-row grid). `null` = no LED at that cell. Mirrors
+ * `tools/led-web/app.js` AXIS_LAYOUT. `[row][col]` -> chain index.
+ *
+ *   c0  c1  c2  c3
+ *   10  21  22   6   r0
+ *   11  20  23   7   r1
+ *   12  19  24   8   r2
+ *   13  18  25   9   r3
+ *   14  17  26   ·   r4
+ *   15  16  27   ·   r5
+ */
+export const AXIS_LAYOUT: readonly (number | null)[][] = [
+  [10, 21, 22, 6],
+  [11, 20, 23, 7],
+  [12, 19, 24, 8],
+  [13, 18, 25, 9],
+  [14, 17, 26, null],
+  [15, 16, 27, null],
+];
+
+export const MATRIX_ROWS = AXIS_LAYOUT.length; // 6
+export const MATRIX_COLS = AXIS_LAYOUT[0].length; // 4
+
+/** Main glyph / snake area: columns 0..2, all 6 rows (18 LEDs, fully populated). */
+export const MAIN_COLS = 3;
+
+/**
+ * Right-hand side bar (column 3): chain indices 6,7,8,9 at rows 0..3. Used to
+ * hint "other platforms are still active in the background".
+ */
+export const SIDEBAR_INDICES: readonly number[] = [6, 7, 8, 9];
+
+/** Map a matrix cell to its chain index, or null if empty / out of range. */
+export const cellIndex = (row: number, col: number): number | null => {
+  if (row < 0 || row >= MATRIX_ROWS || col < 0 || col >= MATRIX_COLS) {
+    return null;
+  }
+  return AXIS_LAYOUT[row][col];
+};
+
 export interface Rgb {
   r: number;
   g: number;

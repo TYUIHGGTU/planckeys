@@ -21,3 +21,7 @@ export const claudeSettingsPath = (): string =>
 /** User-level WorkBuddy desktop settings file (hooks live under the `hooks` key). */
 export const workbuddySettingsPath = (): string =>
   join(homedir(), ".workbuddy", "settings.json");
+
+/** User-level Cursor hooks config (`version` + flat `hooks` map). */
+export const cursorHooksPath = (): string =>
+  join(homedir(), ".cursor", "hooks.json");

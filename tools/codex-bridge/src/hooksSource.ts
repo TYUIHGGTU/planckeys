@@ -6,9 +6,8 @@ import { HookPayload, mapHook } from "./hookEvents.js";
 
 /**
  * Global source: listens on a Unix domain socket that per-event hook forwarder
- * processes connect to. Because hooks run in the shared Codex harness, this
- * observes every codex client (any terminal's CLI and the desktop app) that
- * uses the same `~/.codex` and has trusted the hooks.
+ * processes connect to. Because hooks run in the shared agent harness, this
+ * observes every client that has trusted / installed the hooks.
  *
  * Each connection carries exactly one hook payload (read until EOF, then parse).
  */
@@ -45,7 +44,7 @@ export class HooksSource implements CodexSource {
     });
 
     server.listen(this.socketPath, () => {
-      log.info(`Listening for codex hooks on ${this.socketPath}`);
+      log.info(`Listening for agent hooks on ${this.socketPath}`);
       this.events.emit("open");
     });
 
@@ -63,13 +62,14 @@ export class HooksSource implements CodexSource {
       return;
     }
     log.debug(
-      `hook ${payload.hook_event_name ?? "?"} session=${payload.session_id ?? "?"}`,
+      `hook ${payload.hook_event_name ?? "?"} session=${payload.session_id ?? payload.conversation_id ?? "?"}`,
     );
     const mapped = mapHook(payload);
     if (mapped) {
       this.events.emit("status", {
         threadId: mapped.threadId,
         status: mapped.status,
+        platform: mapped.platform,
       });
     }
   }

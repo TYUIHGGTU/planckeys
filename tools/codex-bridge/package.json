@@ -16,6 +16,7 @@
     "install-hooks:codebuddy": "node dist/index.js install-hooks codebuddy",
     "install-hooks:workbuddy": "node dist/index.js install-hooks workbuddy",
     "install-hooks:claude": "node dist/index.js install-hooks claude",
+    "install-hooks:cursor": "node dist/index.js install-hooks cursor",
     "uninstall-hooks": "node dist/index.js uninstall-hooks codex",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

@@ -1,9 +1,10 @@
 import { EventEmitter } from "node:events";
-import { ThreadStatus } from "./types.js";
+import { AgentPlatform, ThreadStatus } from "./types.js";
 
 export interface StatusEvent {
   threadId: string;
   status: ThreadStatus;
+  platform: AgentPlatform;
 }
 
 /**

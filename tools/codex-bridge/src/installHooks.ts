@@ -6,6 +6,7 @@ import {
   claudeSettingsPath,
   codebuddySettingsPath,
   codexHooksPath,
+  cursorHooksPath,
   defaultSocketPath,
   workbuddySettingsPath,
 } from "./paths.js";
@@ -13,13 +14,25 @@ import {
 /** Substring that identifies handlers installed by this bridge (idempotency). */
 const MARKER = "hookForwarder.js";
 
-export type HookTargetName = "codex" | "codebuddy" | "workbuddy" | "claude";
+export type HookTargetName =
+  | "codex"
+  | "codebuddy"
+  | "workbuddy"
+  | "claude"
+  | "cursor";
+
+/**
+ * `nested` = Claude/Codex/CodeBuddy: hooks[event] = [{ hooks: [{ type, command }] }]
+ * `flat`   = Cursor native:          hooks[event] = [{ command }]  (+ top-level version)
+ */
+type HookFormat = "nested" | "flat";
 
 interface HookTarget {
   /** Config file that holds the `hooks` map. */
   file: string;
-  /** Events to register. Codex uses PermissionRequest; the Claude-family uses Notification. */
+  /** Events to register. */
   events: string[];
+  format: HookFormat;
   /** Human label for the manual trust/verify step. */
   trustHint: string;
 }
@@ -32,45 +45,70 @@ const COMMON_EVENTS = [
   "Stop",
 ];
 
+/** Cursor native camelCase events (no Notification / PermissionRequest equivalent). */
+const CURSOR_EVENTS = [
+  "sessionStart",
+  "beforeSubmitPrompt",
+  "preToolUse",
+  "postToolUse",
+  "stop",
+];
+
+const TARGET_NAMES =
+  "codex | codebuddy | workbuddy | claude | cursor";
+
 const TARGETS: Record<HookTargetName, HookTarget> = {
   codex: {
     file: codexHooksPath(),
     events: [...COMMON_EVENTS, "PermissionRequest"],
+    format: "nested",
     trustHint:
       "run `codex` and `/hooks` to review & TRUST these hooks (codex skips untrusted hooks).",
   },
   codebuddy: {
     file: codebuddySettingsPath(),
     events: [...COMMON_EVENTS, "Notification"],
+    format: "nested",
     trustHint:
       "restart CodeBuddy; settings.json command hooks run without a per-hash trust step.",
   },
   workbuddy: {
     file: workbuddySettingsPath(),
     events: [...COMMON_EVENTS, "Notification"],
+    format: "nested",
     trustHint:
       "fully quit and reopen the WorkBuddy desktop app so it reloads settings.json hooks.",
   },
   claude: {
     file: claudeSettingsPath(),
     events: [...COMMON_EVENTS, "Notification"],
+    format: "nested",
     trustHint: "restart Claude Code; verify with `/hooks`.",
+  },
+  cursor: {
+    file: cursorHooksPath(),
+    events: [...CURSOR_EVENTS],
+    format: "flat",
+    trustHint:
+      "reload Cursor (hooks.json is watched; if lamps stay dark, restart Cursor and check Settings → Hooks).",
   },
 };
 
 interface HookHandler {
-  type: string;
+  type?: string;
   command: string;
   statusMessage?: string;
   [k: string]: unknown;
 }
 interface HookGroup {
   matcher?: string;
-  hooks: HookHandler[];
+  hooks?: HookHandler[];
+  command?: string;
   [k: string]: unknown;
 }
-/** The config file root (codex hooks.json OR a settings.json). We only touch `.hooks`. */
+/** Config root (hooks.json OR settings.json). We only touch `.hooks` (+ Cursor `version`). */
 interface ConfigRoot {
+  version?: number;
   hooks?: Record<string, HookGroup[]>;
   [k: string]: unknown;
 }
@@ -87,13 +125,18 @@ const readConfig = (path: string): ConfigRoot => {
   return JSON.parse(raw) as ConfigRoot;
 };
 
-/** Remove any groups we previously installed (detected by MARKER). */
+const entryIsOurs = (entry: HookGroup): boolean => {
+  if (typeof entry.command === "string" && entry.command.includes(MARKER)) {
+    return true;
+  }
+  return !!entry.hooks?.some((h) => (h.command ?? "").includes(MARKER));
+};
+
+/** Remove any entries we previously installed (detected by MARKER). */
 const stripOurs = (root: ConfigRoot): void => {
   if (!root.hooks) return;
   for (const event of Object.keys(root.hooks)) {
-    root.hooks[event] = root.hooks[event].filter(
-      (g) => !g.hooks?.some((h) => (h.command ?? "").includes(MARKER)),
-    );
+    root.hooks[event] = root.hooks[event].filter((g) => !entryIsOurs(g));
     if (root.hooks[event].length === 0) delete root.hooks[event];
   }
 };
@@ -104,7 +147,7 @@ export const installHooks = (
 ): void => {
   const target = TARGETS[targetName];
   if (!target) {
-    log.error(`Unknown target '${targetName}'. Use codex | codebuddy | claude.`);
+    log.error(`Unknown target '${targetName}'. Use ${TARGET_NAMES}.`);
     process.exitCode = 1;
     return;
   }
@@ -130,16 +173,29 @@ export const installHooks = (
 
   stripOurs(root);
   root.hooks ??= {};
+  if (target.format === "flat") {
+    // Cursor 3.x requires a numeric version on hooks.json.
+    root.version ??= 1;
+  }
 
-  const command = `${shellQuote(process.execPath)} ${shellQuote(forwarderPath())} ${shellQuote(sockPath)}`;
-  const handler: HookHandler = {
-    type: "command",
-    command,
-    statusMessage: "planckeys LED",
-  };
+  // argv: node hookForwarder.js <sock> <platform> — platform tags every payload
+  // so the daemon can paint brand colors without guessing from event shape.
+  const command = `${shellQuote(process.execPath)} ${shellQuote(forwarderPath())} ${shellQuote(sockPath)} ${shellQuote(targetName)}`;
 
   for (const event of target.events) {
-    (root.hooks[event] ??= []).push({ hooks: [{ ...handler }] });
+    if (target.format === "flat") {
+      (root.hooks[event] ??= []).push({ command });
+    } else {
+      (root.hooks[event] ??= []).push({
+        hooks: [
+          {
+            type: "command",
+            command,
+            statusMessage: "planckeys LED",
+          },
+        ],
+      });
+    }
   }
 
   writeFileSync(path, JSON.stringify(root, null, 2) + "\n", "utf8");
@@ -153,7 +209,7 @@ export const installHooks = (
 export const uninstallHooks = (targetName: HookTargetName = "codex"): void => {
   const target = TARGETS[targetName];
   if (!target) {
-    log.error(`Unknown target '${targetName}'. Use codex | codebuddy | claude.`);
+    log.error(`Unknown target '${targetName}'. Use ${TARGET_NAMES}.`);
     process.exitCode = 1;
     return;
   }
