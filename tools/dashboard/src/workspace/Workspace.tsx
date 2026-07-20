@@ -299,7 +299,6 @@ function CandidateButton({
       }
     >
       <span>{candidate.label}</span>
-      <small>{candidate.group}</small>
     </button>
   );
 }

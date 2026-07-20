@@ -1,5 +1,5 @@
 import type { BehaviorSummary, Binding } from "../device/studio/rpc";
-import { usageLabel } from "./hidUsages";
+import { encodeKbUsage, usageLabel } from "./hidUsages";
 
 /** 由 behaviorId 找显示名（找不到回退到 id）。 */
 export const behaviorName = (
@@ -36,9 +36,15 @@ const classify = (displayName: string): BehaviorKind => {
 
 /** 把一个键码/参数解码成简短键帽文字。 */
 const keyLabel = (usage: number): string => {
-  const label = usageLabel(usage);
-  if (label) return label;
-  // 未收录的 usage：显示所属页和 id，避免出现无意义的大整数。
+  // 完整编码（含 usage page）直接查。
+  const direct = usageLabel(usage);
+  if (direct) return direct;
+  // 部分固件把 `&kp` 参数存成裸 HID id（无 page 高位），按键盘页补查一次。
+  if (usage >>> 16 === 0) {
+    const asKeyboard = usageLabel(encodeKbUsage(usage));
+    if (asKeyboard) return asKeyboard;
+  }
+  // 仍未收录：显示 id，避免出现无意义的大整数。
   const id = usage & 0xffff;
   return `0x${id.toString(16).toUpperCase()}`;
 };
