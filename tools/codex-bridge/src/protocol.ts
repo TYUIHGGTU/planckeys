@@ -17,6 +17,8 @@ export const CMD_PIXELS = 0xa2;
 export const CMD_BRIGHTNESS = 0xa3;
 /** 0xA4: fill the whole canvas with one color. */
 export const CMD_FILL = 0xa4;
+/** 0xA5: independently configure axis or underglow animation. */
+export const CMD_ZONE_CONFIG = 0xa5;
 
 /** Global animation modes understood by the firmware (0xA1 byte[1]). */
 export enum LedMode {
@@ -25,6 +27,11 @@ export enum LedMode {
   Breathing = 2,
   Chase = 3,
   Melt = 4,
+}
+
+export enum LedZone {
+  Axis = 0,
+  Underglow = 1,
 }
 
 /** Total LEDs on the single chain (must match firmware `chain-length`). */
@@ -141,6 +148,21 @@ export const buildConfigReport = (
 /** Build a 0xA4 FILL report. */
 export const buildFillReport = (color: Rgb): Uint8Array =>
   toReport([CMD_FILL, color.r, color.g, color.b]);
+
+/** Build a 0xA5 ZONE_CONFIG report. */
+export const buildZoneConfigReport = (
+  zone: LedZone,
+  mode: LedMode,
+  brightness: number,
+  speed: number,
+): Uint8Array =>
+  toReport([
+    CMD_ZONE_CONFIG,
+    zone & 0xff,
+    mode & 0xff,
+    clampByte(brightness),
+    clampByte(speed || 1),
+  ]);
 
 /**
  * Build one or more 0xA2 PIXELS reports for a contiguous run of pixels.

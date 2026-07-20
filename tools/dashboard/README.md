@@ -2,8 +2,8 @@
 
 一个网页里同时完成：
 
-- **灯效**（`灯效` Tab）：WebHID 直连 Raw HID `0xFF60`，预设灯效 / 亮度速度 / 逐颗 RGB / 点阵数字。迁移自 `tools/led-web`。
-- **改键**（`键位` Tab）：Web Serial + [ZMK Studio RPC](https://zmk.dev/docs/features/studio)（`@zmkfirmware/zmk-studio-ts-client`），运行时改单键 binding、即时生效、保存到 settings。
+- **灯效**：WebHID 直连 Raw HID `0xFF60`，轴灯/底灯独立预设、亮度速度、配色和逐颗 RGB。
+- **改键**：Web Serial + [ZMK Studio RPC](https://zmk.dev/docs/features/studio)（`@zmkfirmware/zmk-studio-ts-client`），候选键点击或拖放后即时生效，并在 500ms 内自动保存到 settings。
 
 灯（WebHID）与键（Web Serial）是**两条独立连接**，顶栏分别有连接按钮与状态，一侧失败不影响另一侧。
 
@@ -17,7 +17,7 @@
 ## 开发 / 构建
 
 ```bash
-cd tools/console
+cd tools/dashboard
 npm install        # @zmkfirmware 作用域走官方源（见 .npmrc）
 npm run dev        # http://localhost:5173
 npm run build      # 产出 dist/
@@ -30,26 +30,28 @@ npm run lint       # eslint
 
 ## 使用
 
-1. **灯效**：点顶栏「连接 HID」→ 选 `PlanckKeys L`（usage page `0xFF60`）→ 选预设 / 配色 / 点格子逐颗上色。
-2. **键位**：点顶栏「连接 Studio」→ 选键盘的 **CDC 串口** → 切层、点键改 behavior/参数（`应用` 即时生效）→ `保存` 写入 settings。
+1. 点顶栏「连接 HID」选择 `PlanckKeys L`，右栏可分别配置轴灯和底灯。
+2. 点「连接 Studio」选择键盘的 CDC 串口；先在画布选键，再点击候选键，或把候选键直接拖到目标位置。修改即时生效并自动保存。
+3. 候选区顶边可上下拖动；主题支持跟随系统、浅色和深色。
 
 ## 目录
 
 ```
 src/
 ├── device/           # 传输层（零 React）
-│   ├── hid/          # protocol.ts (0xA1–0xA4) + ledDevice.ts (WebHID)
+│   ├── hid/          # protocol.ts (0xA1–0xA5) + ledDevice.ts (WebHID)
 │   ├── studio/       # connection.ts (Web Serial) + rpc.ts (Studio RPC 领域封装)
 │   └── browser.ts    # WebHID / Web Serial 能力检测
-├── led/              # 灯效领域：color/constants/schemes/glyphs + 组件
-├── keymap/           # 改键领域：KeymapPage + 组件 + hidUsages
-└── shared/           # AppShell / ConnectBar / LogPanel + hooks(useLedDevice/useStudioDevice) + log
+├── led/              # 灯效领域：color/constants/schemes/glyphs + 灯珠组件
+├── keymap/           # 改键领域：候选 binding、物理键盘、HID usages
+├── workspace/        # 生产单页工作台、主题和可拖动布局
+└── shared/           # 连接/日志组件 + hooks(useLedDevice/useStudioDevice)
 ```
 
-原则：`device/` 层不含 React；页面只依赖 hooks；灯与键互不 import 对方实现，只共享 `AppShell` 与连接状态。协议常量与固件 `src/led_control.c`、`tools/codex-bridge/src/protocol.ts` 三方对齐。
+原则：`device/` 层不含 React；工作台只通过 hooks 写设备。协议常量与固件 `src/led_control.c`、`tools/codex-bridge/src/protocol.ts` 三方对齐。
 
 ## 现状与边界（MVP）
 
-- 灯效：与旧 `tools/led-web` 功能对等。
-- 改键：单键实时分配 + 保存/丢弃 + 层切换 + 未保存提示。`&kp` 参数提供少量常用键快捷填入，其余按数值/0x 输入。
+- 灯效：轴灯、底灯独立动画参数；配色、自定义色和逐颗控制即时写入。
+- 改键：完整常用 USB HID 候选目录、点击/拖放分配、层切换、自动保存和高级参数编辑。
 - 暂不做：encoder 绑定、combo / 宏编辑、keymap 导入导出、层增删改名、右板（右板未开 Studio）。这些属后续阶段（见 `docs/led-web-keymap-studio.md` W3/W4）。

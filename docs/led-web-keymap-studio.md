@@ -11,7 +11,7 @@
 | 判断 | 说明 |
 |------|------|
 | **可行** | Planckeys 是 ZMK 键盘，官方已有完整「Studio RPC」运行时改键栈；左板已部分开启相关配置 |
-| **不能直接改现有 LED 协议** | 现有 `tools/led-web` 走 Raw HID `0xFF60`（`0xA1–0xA4`），只控灯；Studio 走 **USB CDC + protobuf RPC**，两条通道完全独立 |
+| **LED 与改键通道独立** | LED 走 Raw HID `0xFF60`（`0xA1–0xA5`）；Studio 走 **USB CDC + protobuf RPC**，两条通道完全独立 |
 | **前端形态** | 以 **React + TypeScript + Vite** 新建统一控制台（建议目录 `tools/console`），迁入现有 LED 逻辑，并接入 Studio RPC；废弃「三文件静态页」作为主形态 |
 | **推荐路径** | **先修好固件侧 Studio** → 脚手架 React 工程 → WebHID（灯）+ Web Serial（键）同页并存 |
 | **不推荐** | 在 Raw HID 上自研 keymap RPC；或继续在无构建的 `app.js` 上堆功能 |
@@ -248,7 +248,7 @@ tools/console/
     ├── device/                     # 与键盘的传输层（无 UI）
     │   ├── hid/
     │   │   ├── types.ts
-    │   │   ├── protocol.ts         # 0xA1–0xA4，对齐 codex-bridge/protocol.ts
+    │   │   ├── protocol.ts         # 0xA1–0xA5，对齐 codex-bridge/protocol.ts
     │   │   └── ledDevice.ts        # WebHID open/send/close
     │   ├── studio/
     │   │   ├── connection.ts       # Web Serial + zmk-studio-ts-client

@@ -8,14 +8,16 @@
 export const USAGE_PAGE = 0xff60;
 export const REPORT_SIZE = 32;
 
-/** 0xA1：设全局模式/亮度/速度（只改动画，不动颜色）。 */
+/** 0xA1：兼容旧客户端，同时设置两个分区的模式/亮度/速度。 */
 export const CMD_CONFIG = 0xa1;
 /** 0xA2：写画布一段逐颗 RGB（不改模式）。 */
 export const CMD_PIXELS = 0xa2;
-/** 0xA3：只改全局亮度。 */
+/** 0xA3：兼容旧客户端，同时设置两个分区亮度。 */
 export const CMD_BRIGHTNESS = 0xa3;
 /** 0xA4：用单色铺满整块画布。 */
 export const CMD_FILL = 0xa4;
+/** 0xA5：独立配置轴灯或底灯的模式/亮度/速度。 */
+export const CMD_ZONE_CONFIG = 0xa5;
 
 /** 固件支持的动画模式（0xA1 的 byte[1]）。 */
 export enum LedMode {
@@ -24,6 +26,17 @@ export enum LedMode {
   Breathing = 2,
   Chase = 3,
   Melt = 4,
+}
+
+export enum LedZone {
+  Axis = 0,
+  Underglow = 1,
+}
+
+export interface ZoneConfig {
+  mode: LedMode;
+  brightness: number;
+  speed: number;
 }
 
 /** 单条链灯珠总数（须与固件 chain-length 对齐）。 */
@@ -84,6 +97,19 @@ export const buildBrightnessReport = (brightness: number): Uint8Array =>
 /** 组 0xA4 FILL 报文（单色铺满画布）。 */
 export const buildFillReport = (color: Rgb): Uint8Array =>
   toReport([CMD_FILL, clampByte(color.r), clampByte(color.g), clampByte(color.b)]);
+
+/** 0xA5 ZONE_CONFIG：[zone, mode, brightness, speed]。 */
+export const buildZoneConfigReport = (
+  zone: LedZone,
+  config: ZoneConfig,
+): Uint8Array =>
+  toReport([
+    CMD_ZONE_CONFIG,
+    zone & 0xff,
+    config.mode & 0xff,
+    clampByte(config.brightness),
+    clampByte(config.speed || 1),
+  ]);
 
 /**
  * 组一条 0xA2 PIXELS 报文：从 offset 起连续写 colors（长度须 <= 9）。

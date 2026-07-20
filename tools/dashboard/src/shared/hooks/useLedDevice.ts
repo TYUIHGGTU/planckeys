@@ -1,42 +1,50 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LedDevice } from "../../device/hid/ledDevice";
 import {
-  AXIS_INDICES,
+  AXIS_LAYOUT,
   LED_COUNT,
   LedMode,
+  LedZone,
   UNDERGLOW_INDICES,
   buildAllPixelReports,
-  buildBrightnessReport,
   buildConfigReport,
   buildPixelReport,
+  buildZoneConfigReport,
   type Rgb,
+  type ZoneConfig,
 } from "../../device/hid/protocol";
 import { hexToRgb, isLit } from "../../led/color";
 import { DEFAULT_BRIGHTNESS, DEFAULT_HEX, DEFAULT_SPEED } from "../../led/constants";
 import type { ColorScheme } from "../../led/schemes";
-import { AXIS_LAYOUT } from "../../device/hid/protocol";
 import { pushLog } from "../log";
 
 const makeDefaultCanvas = (): Rgb[] =>
   Array.from({ length: LED_COUNT }, () => hexToRgb(DEFAULT_HEX));
 
+const makeDefaultZone = (): ZoneConfig => ({
+  mode: LedMode.Solid,
+  brightness: DEFAULT_BRIGHTNESS,
+  speed: DEFAULT_SPEED,
+});
+
 export interface LedController {
   connected: boolean;
   productName: string | null;
   pixels: Rgb[];
-  mode: LedMode;
-  brightness: number;
-  speed: number;
+  axis: ZoneConfig;
+  underglow: ZoneConfig;
   baseColor: string;
+  error: string | null;
 
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
-  setMode: (mode: LedMode) => void;
-  setBrightness: (v: number) => void;
-  setSpeed: (v: number) => void;
+  setZoneMode: (zone: LedZone, mode: LedMode) => void;
+  setZoneBrightness: (zone: LedZone, value: number) => void;
+  setZoneSpeed: (zone: LedZone, value: number) => void;
   setBaseColorOnly: (hex: string) => void;
   applyBaseColor: (hex: string) => void;
-  togglePixel: (idx: number) => void;
+  setPixelColor: (index: number, color: Rgb) => void;
+  togglePixel: (index: number) => void;
   fillSubset: (indices: readonly number[], color: Rgb | null) => void;
   applyScheme: (scheme: ColorScheme) => void;
   setCanvas: (next: Rgb[], note?: string) => void;
@@ -47,163 +55,178 @@ export const useLedDevice = (): LedController => {
   const [connected, setConnected] = useState(false);
   const [productName, setProductName] = useState<string | null>(null);
   const [pixels, setPixels] = useState<Rgb[]>(makeDefaultCanvas);
-  const [mode, setModeState] = useState<LedMode>(LedMode.Solid);
-  const [brightness, setBrightnessState] = useState(DEFAULT_BRIGHTNESS);
-  const [speed, setSpeedState] = useState(DEFAULT_SPEED);
+  const [axis, setAxis] = useState<ZoneConfig>(makeDefaultZone);
+  const [underglow, setUnderglow] = useState<ZoneConfig>(makeDefaultZone);
   const [baseColor, setBaseColor] = useState(DEFAULT_HEX);
+  const [error, setError] = useState<string | null>(null);
 
-  // 用 ref 镜像可变状态，避免闭包拿到旧值（发送逻辑读取时用最新值）。
   const pixelsRef = useRef(pixels);
   pixelsRef.current = pixels;
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
-  const brightnessRef = useRef(brightness);
-  brightnessRef.current = brightness;
-  const speedRef = useRef(speed);
-  speedRef.current = speed;
+  const axisRef = useRef(axis);
+  axisRef.current = axis;
+  const underglowRef = useRef(underglow);
+  underglowRef.current = underglow;
 
-  const safeSend = useCallback(async (fn: () => Promise<void>) => {
+  const safeSend = useCallback(async (operation: () => Promise<void>) => {
     if (!deviceRef.current.isOpen) return;
     try {
-      await fn();
-    } catch (e) {
-      pushLog("发送失败: " + ((e as Error).message || String(e)));
+      await operation();
+      setError(null);
+    } catch (sendError) {
+      const message = (sendError as Error).message || String(sendError);
+      setError(message);
+      pushLog("发送失败: " + message);
     }
   }, []);
 
-  const sendConfig = useCallback(
-    (m: LedMode) => {
+  const sendZoneConfig = useCallback(
+    (zone: LedZone, config: ZoneConfig) => {
       void safeSend(() =>
-        deviceRef.current.send(
-          buildConfigReport(m, brightnessRef.current, speedRef.current),
-        ),
+        deviceRef.current.send(buildZoneConfigReport(zone, config)),
       );
       pushLog(
-        `config mode=${m} br=${brightnessRef.current} sp=${speedRef.current}`,
+        `zone=${zone === LedZone.Axis ? "axis" : "under"} mode=${config.mode} br=${config.brightness} sp=${config.speed}`,
       );
     },
     [safeSend],
   );
 
   const sendAllPixels = useCallback(
-    (px: Rgb[]) => {
-      void safeSend(() => deviceRef.current.sendMany(buildAllPixelReports(px)));
+    (next: Rgb[]) => {
+      void safeSend(() =>
+        deviceRef.current.sendMany(buildAllPixelReports(next)),
+      );
     },
     [safeSend],
   );
 
-  // 编辑画布后，若当前是关灯则自动切常亮让改动可见；否则保留当前动画。
-  const ensureVisible = useCallback(() => {
-    if (modeRef.current === LedMode.Off) {
-      setModeState(LedMode.Solid);
-      modeRef.current = LedMode.Solid;
-      sendConfig(LedMode.Solid);
-    }
-  }, [sendConfig]);
-
   const connect = useCallback(async () => {
     try {
-      const dev = await deviceRef.current.request(() => {
+      const device = await deviceRef.current.request(() => {
         setConnected(false);
         setProductName(null);
         pushLog("设备已拔出");
       });
       setConnected(true);
-      setProductName(dev.productName ?? "HID");
-      pushLog("已连接并打开设备");
-      // 把网页画布同步到键盘（颜色以网页为准），再同步模式/亮度/速度。
+      setProductName(device.productName ?? "HID");
+      setError(null);
+      pushLog("已连接并打开 HID 设备");
       sendAllPixels(pixelsRef.current);
-      sendConfig(modeRef.current);
-    } catch (e) {
-      pushLog("连接失败: " + ((e as Error).message || String(e)));
-      throw e;
+      // Legacy CONFIG initializes older firmware; A5 then restores independent zones.
+      await safeSend(() =>
+        deviceRef.current.send(
+          buildConfigReport(
+            axisRef.current.mode,
+            axisRef.current.brightness,
+            axisRef.current.speed,
+          ),
+        ),
+      );
+      sendZoneConfig(LedZone.Axis, axisRef.current);
+      sendZoneConfig(LedZone.Underglow, underglowRef.current);
+    } catch (connectError) {
+      const message = (connectError as Error).message || String(connectError);
+      setError(message);
+      pushLog("连接失败: " + message);
+      throw connectError;
     }
-  }, [sendAllPixels, sendConfig]);
+  }, [safeSend, sendAllPixels, sendZoneConfig]);
 
   const disconnect = useCallback(async () => {
     await deviceRef.current.close();
     setConnected(false);
     setProductName(null);
+    setError(null);
     pushLog("已断开 HID");
   }, []);
 
-  const setMode = useCallback(
-    (m: LedMode) => {
-      setModeState(m);
-      modeRef.current = m;
-      sendConfig(m);
-    },
-    [sendConfig],
-  );
-
-  const setBrightness = useCallback(
-    (v: number) => {
-      setBrightnessState(v);
-      brightnessRef.current = v;
-      void safeSend(() => deviceRef.current.send(buildBrightnessReport(v)));
-    },
-    [safeSend],
-  );
-
-  const setSpeed = useCallback(
-    (v: number) => {
-      setSpeedState(v);
-      speedRef.current = v;
-      if (modeRef.current >= LedMode.Breathing && modeRef.current <= LedMode.Melt) {
-        sendConfig(modeRef.current);
+  const updateZone = useCallback(
+    (zone: LedZone, update: (current: ZoneConfig) => ZoneConfig) => {
+      if (zone === LedZone.Axis) {
+        const next = update(axisRef.current);
+        axisRef.current = next;
+        setAxis(next);
+        sendZoneConfig(zone, next);
+      } else {
+        const next = update(underglowRef.current);
+        underglowRef.current = next;
+        setUnderglow(next);
+        sendZoneConfig(zone, next);
       }
     },
-    [sendConfig],
+    [sendZoneConfig],
   );
 
-  const setBaseColorOnly = useCallback((hex: string) => {
-    setBaseColor(hex);
-  }, []);
+  const setZoneMode = useCallback(
+    (zone: LedZone, mode: LedMode) =>
+      updateZone(zone, (current) => ({ ...current, mode })),
+    [updateZone],
+  );
+
+  const setZoneBrightness = useCallback(
+    (zone: LedZone, brightness: number) =>
+      updateZone(zone, (current) => ({ ...current, brightness })),
+    [updateZone],
+  );
+
+  const setZoneSpeed = useCallback(
+    (zone: LedZone, speed: number) =>
+      updateZone(zone, (current) => ({ ...current, speed })),
+    [updateZone],
+  );
+
+  const setBaseColorOnly = useCallback((hex: string) => setBaseColor(hex), []);
 
   const setCanvas = useCallback(
     (next: Rgb[], note?: string) => {
       setPixels(next);
       pixelsRef.current = next;
       sendAllPixels(next);
-      ensureVisible();
       if (note) pushLog(note);
     },
-    [sendAllPixels, ensureVisible],
+    [sendAllPixels],
   );
 
   const applyBaseColor = useCallback(
     (hex: string) => {
       setBaseColor(hex);
       const color = hexToRgb(hex);
-      const next = pixelsRef.current.map((_, i) =>
-        AXIS_INDICES.includes(i) || UNDERGLOW_INDICES.includes(i)
-          ? { ...color }
-          : { ..._ },
-      );
-      setCanvas(next);
+      setCanvas(pixelsRef.current.map(() => ({ ...color })));
     },
     [setCanvas],
   );
 
-  const togglePixel = useCallback(
-    (idx: number) => {
-      const cur = pixelsRef.current[idx];
-      const next = pixelsRef.current.map((p) => ({ ...p }));
-      next[idx] = isLit(cur) ? { r: 0, g: 0, b: 0 } : hexToRgb(baseColor);
+  const setPixelColor = useCallback(
+    (index: number, color: Rgb) => {
+      if (index < 0 || index >= LED_COUNT) return;
+      const next = pixelsRef.current.map((pixel) => ({ ...pixel }));
+      next[index] = { ...color };
       setPixels(next);
       pixelsRef.current = next;
       void safeSend(() =>
-        deviceRef.current.send(buildPixelReport(idx, [next[idx]])),
+        deviceRef.current.send(buildPixelReport(index, [next[index]])),
       );
-      ensureVisible();
     },
-    [baseColor, safeSend, ensureVisible],
+    [safeSend],
+  );
+
+  const togglePixel = useCallback(
+    (index: number) => {
+      const current = pixelsRef.current[index];
+      setPixelColor(
+        index,
+        isLit(current) ? { r: 0, g: 0, b: 0 } : hexToRgb(baseColor),
+      );
+    },
+    [baseColor, setPixelColor],
   );
 
   const fillSubset = useCallback(
     (indices: readonly number[], color: Rgb | null) => {
-      const next = pixelsRef.current.map((p) => ({ ...p }));
-      for (const i of indices) next[i] = color ? { ...color } : { r: 0, g: 0, b: 0 };
+      const next = pixelsRef.current.map((pixel) => ({ ...pixel }));
+      for (const index of indices) {
+        next[index] = color ? { ...color } : { r: 0, g: 0, b: 0 };
+      }
       setCanvas(next);
     },
     [setCanvas],
@@ -211,21 +234,23 @@ export const useLedDevice = (): LedController => {
 
   const applyScheme = useCallback(
     (scheme: ColorScheme) => {
-      const next = pixelsRef.current.map((p) => ({ ...p }));
-      const cols = AXIS_LAYOUT[0].length;
-      for (let r = 0; r < AXIS_LAYOUT.length; r++) {
-        for (let c = 0; c < cols; c++) {
-          const idx = AXIS_LAYOUT[r][c];
-          if (idx === null) continue;
-          next[idx] = hexToRgb(scheme.paint(r, c, cols));
+      const next = pixelsRef.current.map((pixel) => ({ ...pixel }));
+      const columns = AXIS_LAYOUT[0].length;
+      for (let row = 0; row < AXIS_LAYOUT.length; row++) {
+        for (let column = 0; column < columns; column++) {
+          const index = AXIS_LAYOUT[row][column];
+          if (index !== null) {
+            next[index] = hexToRgb(scheme.paint(row, column, columns));
+          }
         }
       }
-      const n = UNDERGLOW_INDICES.length;
-      UNDERGLOW_INDICES.forEach((idx, i) => {
-        next[idx] = hexToRgb(scheme.under(i, n));
+      UNDERGLOW_INDICES.forEach((index, position) => {
+        next[index] = hexToRgb(
+          scheme.under(position, UNDERGLOW_INDICES.length),
+        );
       });
       setBaseColor(scheme.primary);
-      setCanvas(next, "应用配色: " + scheme.name + "（当前模式不变，可再选预设让它动起来）");
+      setCanvas(next, "应用配色: " + scheme.name);
     },
     [setCanvas],
   );
@@ -235,17 +260,18 @@ export const useLedDevice = (): LedController => {
       connected,
       productName,
       pixels,
-      mode,
-      brightness,
-      speed,
+      axis,
+      underglow,
       baseColor,
+      error,
       connect,
       disconnect,
-      setMode,
-      setBrightness,
-      setSpeed,
+      setZoneMode,
+      setZoneBrightness,
+      setZoneSpeed,
       setBaseColorOnly,
       applyBaseColor,
+      setPixelColor,
       togglePixel,
       fillSubset,
       applyScheme,
@@ -255,17 +281,18 @@ export const useLedDevice = (): LedController => {
       connected,
       productName,
       pixels,
-      mode,
-      brightness,
-      speed,
+      axis,
+      underglow,
       baseColor,
+      error,
       connect,
       disconnect,
-      setMode,
-      setBrightness,
-      setSpeed,
+      setZoneMode,
+      setZoneBrightness,
+      setZoneSpeed,
       setBaseColorOnly,
       applyBaseColor,
+      setPixelColor,
       togglePixel,
       fillSubset,
       applyScheme,

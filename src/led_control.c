@@ -6,7 +6,7 @@
  * 独占 zmk,underglow 指向的 WS2812 灯带（内建 ZMK underglow 必须关闭），
  * 提供：
  *   - 主机(WebHID/Raw HID, usage page 0xFF60) -> 键盘：**每颗独立基色画布**
- *     + 全局模式 / 亮度 / 速度；
+ *     + 轴灯/底灯独立模式、亮度、速度；
  *   - 预设灯效在「每颗基色画布」之上做动画：常亮(solid) / 呼吸(breathing) /
  *     跑马(marquee) / 熔灭(fade) / 关灯(off)。因此配色方案（多色）也能整体
  *     一起呼吸 / 跑马，而不是被压成单一颜色；
@@ -19,6 +19,7 @@
  *   0xA2 PIXELS    : [1]=offset [2]=count, 之后每颗 3 字节 RGB  （写画布，不改模式）
  *   0xA3 BRIGHTNESS: [1]=brightness
  *   0xA4 FILL      : [1]=R [2]=G [3]=B                    （用单色铺满整块画布）
+ *   0xA5 ZONE_CONFIG: [1]=zone [2]=mode [3]=brightness [4]=speed
  */
 
 #include <zephyr/kernel.h>
@@ -46,6 +47,10 @@ LOG_MODULE_REGISTER(planckeys_led, CONFIG_ZMK_LOG_LEVEL);
 #endif
 
 #define LED_COUNT DT_PROP(STRIP_NODE, chain_length)
+BUILD_ASSERT(CONFIG_PLANCKEYS_LED_AXIS_START > 0,
+	     "PLANCKEYS_LED_AXIS_START must leave at least one underglow LED");
+BUILD_ASSERT(CONFIG_PLANCKEYS_LED_AXIS_START < LED_COUNT,
+	     "PLANCKEYS_LED_AXIS_START must leave at least one axis LED");
 
 static const struct device *const strip = DEVICE_DT_GET(STRIP_NODE);
 
@@ -54,6 +59,7 @@ static const struct device *const strip = DEVICE_DT_GET(STRIP_NODE);
 #define CMD_PIXELS     0xA2
 #define CMD_BRIGHTNESS 0xA3
 #define CMD_FILL       0xA4
+#define CMD_ZONE_CONFIG 0xA5
 
 enum led_mode {
 	MODE_OFF = 0,
@@ -69,15 +75,25 @@ static const enum led_mode preset_order[] = {
 	MODE_SOLID, MODE_BREATHING, MODE_MARQUEE, MODE_FADE, MODE_OFF,
 };
 
-static struct {
+enum led_zone {
+	ZONE_AXIS = 0,
+	ZONE_UNDERGLOW = 1,
+	ZONE_COUNT,
+};
+
+struct zone_state {
 	enum led_mode mode;
-	uint8_t brightness; /* 0-255 全局亮度 */
-	uint8_t speed;      /* 1-255 动画速度 */
+	uint8_t brightness;
+	uint8_t speed;
+};
+
+static struct {
+	struct zone_state zones[ZONE_COUNT];
 	struct led_rgb base[LED_COUNT]; /* 每颗基色画布：颜色的唯一来源 */
 } state;
 
 static struct k_mutex lock;
-static uint32_t phase;
+static uint32_t phase[ZONE_COUNT];
 static bool ready;
 
 static inline uint8_t scale8(uint8_t v, uint8_t s)
@@ -99,63 +115,77 @@ static inline void scale_px(struct led_rgb *out, const struct led_rgb *base, uin
 	out->b = scale8(base->b, lvl);
 }
 
-/* 计算一帧到 out[]（调用方持有 lock）。颜色取自 state.base[]，模式只决定亮度调制。 */
-static void compute_frame(struct led_rgb *out)
+static inline enum led_zone zone_for_index(int index)
 {
-	const uint8_t br = state.brightness;
+	return index < CONFIG_PLANCKEYS_LED_AXIS_START ? ZONE_UNDERGLOW : ZONE_AXIS;
+}
 
-	switch (state.mode) {
+/* 计算一个分区内一颗灯的帧颜色（调用方持有 lock）。 */
+static void compute_zone_pixel(enum led_zone zone, int index, struct led_rgb *out)
+{
+	const struct zone_state *cfg = &state.zones[zone];
+	const int start = zone == ZONE_UNDERGLOW ? 0 : CONFIG_PLANCKEYS_LED_AXIS_START;
+	const int count = zone == ZONE_UNDERGLOW ? CONFIG_PLANCKEYS_LED_AXIS_START
+						 : LED_COUNT - CONFIG_PLANCKEYS_LED_AXIS_START;
+	const int local_index = index - start;
+
+	switch (cfg->mode) {
 	case MODE_OFF:
-		memset(out, 0, sizeof(struct led_rgb) * LED_COUNT);
+		memset(out, 0, sizeof(*out));
 		break;
 
 	case MODE_SOLID:
-		for (int i = 0; i < LED_COUNT; i++) {
-			scale_px(&out[i], &state.base[i], br);
-		}
+		scale_px(out, &state.base[index], cfg->brightness);
 		break;
 
 	case MODE_BREATHING: {
-		uint8_t lvl = scale8(br, tri((uint8_t)(phase & 0xFF)));
-		for (int i = 0; i < LED_COUNT; i++) {
-			scale_px(&out[i], &state.base[i], lvl);
-		}
+		uint8_t lvl = scale8(cfg->brightness, tri((uint8_t)(phase[zone] & 0xFF)));
+		scale_px(out, &state.base[index], lvl);
 		break;
 	}
 
 	case MODE_MARQUEE: {
-		/* 一个带拖尾的窗口绕灯带移动，窗口内显示各颗自己的基色 */
-		const int trail = 5;
-		uint32_t head = (phase / 2U) % LED_COUNT;
-		for (int i = 0; i < LED_COUNT; i++) {
-			uint32_t d = (head + LED_COUNT - i) % LED_COUNT;
-			uint8_t lvl = (d < (uint32_t)trail)
-					      ? (uint8_t)(255 - d * (255 / trail))
-					      : 0;
-			scale_px(&out[i], &state.base[i], scale8(br, lvl));
-		}
+		const int trail = MIN(5, count);
+		uint32_t head = (phase[zone] / 2U) % count;
+		uint32_t distance = (head + count - local_index) % count;
+		uint8_t lvl = (distance < (uint32_t)trail)
+				      ? (uint8_t)(255 - distance * (255 / trail))
+				      : 0;
+		scale_px(out, &state.base[index], scale8(cfg->brightness, lvl));
 		break;
 	}
 
 	case MODE_FADE: {
-		/* 熔灭：一道亮度波沿灯带流动，各颗保持自己的基色 */
-		for (int i = 0; i < LED_COUNT; i++) {
-			uint8_t t = (uint8_t)((phase + (uint32_t)i * (256U / LED_COUNT)) & 0xFF);
-			uint8_t lvl = scale8(br, tri(t));
-			scale_px(&out[i], &state.base[i], lvl);
-		}
+		uint8_t t = (uint8_t)((phase[zone] +
+				      (uint32_t)local_index * (256U / count)) & 0xFF);
+		uint8_t lvl = scale8(cfg->brightness, tri(t));
+		scale_px(out, &state.base[index], lvl);
 		break;
 	}
 
 	default:
-		memset(out, 0, sizeof(struct led_rgb) * LED_COUNT);
+		memset(out, 0, sizeof(*out));
 		break;
+	}
+}
+
+/* 计算一帧到 out[]（调用方持有 lock）。 */
+static void compute_frame(struct led_rgb *out)
+{
+	for (int i = 0; i < LED_COUNT; i++) {
+		compute_zone_pixel(zone_for_index(i), i, &out[i]);
 	}
 }
 
 static inline bool is_animated(enum led_mode m)
 {
 	return m == MODE_BREATHING || m == MODE_MARQUEE || m == MODE_FADE;
+}
+
+static inline bool any_zone_animated(void)
+{
+	return is_animated(state.zones[ZONE_AXIS].mode) ||
+	       is_animated(state.zones[ZONE_UNDERGLOW].mode);
 }
 
 static void push_frame(void)
@@ -183,16 +213,20 @@ static void anim_work_fn(struct k_work *work)
 {
 	ARG_UNUSED(work);
 
-	enum led_mode m;
+	bool animated;
 
 	k_mutex_lock(&lock, K_FOREVER);
-	m = state.mode;
-	phase += (state.speed ? state.speed : 1);
+	for (int zone = 0; zone < ZONE_COUNT; zone++) {
+		if (is_animated(state.zones[zone].mode)) {
+			phase[zone] += state.zones[zone].speed ? state.zones[zone].speed : 1;
+		}
+	}
+	animated = any_zone_animated();
 	k_mutex_unlock(&lock);
 
 	push_frame();
 
-	if (is_animated(m)) {
+	if (animated) {
 		k_work_schedule(&anim_work, K_MSEC(CONFIG_PLANCKEYS_LED_FRAME_MS));
 	}
 }
@@ -200,15 +234,15 @@ static void anim_work_fn(struct k_work *work)
 /* 状态变化后调用：立即渲染，并按需启停动画定时器。 */
 static void apply_state_change(void)
 {
-	enum led_mode m;
+	bool animated;
 
 	push_frame();
 
 	k_mutex_lock(&lock, K_FOREVER);
-	m = state.mode;
+	animated = any_zone_animated();
 	k_mutex_unlock(&lock);
 
-	if (is_animated(m)) {
+	if (animated) {
 		k_work_schedule(&anim_work, K_MSEC(CONFIG_PLANCKEYS_LED_FRAME_MS));
 	} else {
 		k_work_cancel_delayable(&anim_work);
@@ -221,17 +255,18 @@ void planckeys_led_cycle_preset(void)
 
 	int idx = -1;
 	for (int i = 0; i < (int)ARRAY_SIZE(preset_order); i++) {
-		if (preset_order[i] == state.mode) {
+		if (preset_order[i] == state.zones[ZONE_AXIS].mode) {
 			idx = i;
 			break;
 		}
 	}
 	idx = (idx < 0) ? 0 : (idx + 1) % (int)ARRAY_SIZE(preset_order);
-	state.mode = preset_order[idx];
+	state.zones[ZONE_AXIS].mode = preset_order[idx];
+	state.zones[ZONE_UNDERGLOW].mode = preset_order[idx];
 
 	k_mutex_unlock(&lock);
 
-	LOG_INF("LED preset -> %d", (int)state.mode);
+	LOG_INF("LED preset -> %d", (int)state.zones[ZONE_AXIS].mode);
 	apply_state_change();
 }
 
@@ -251,9 +286,12 @@ static int raw_hid_listener(const zmk_event_t *eh)
 	case CMD_CONFIG:
 		if (ev->length >= 4) {
 			uint8_t m = d[1];
-			state.mode = (m < MODE_COUNT) ? (enum led_mode)m : MODE_SOLID;
-			state.brightness = d[2];
-			state.speed = d[3] ? d[3] : 1;
+			for (int zone = 0; zone < ZONE_COUNT; zone++) {
+				state.zones[zone].mode =
+					(m < MODE_COUNT) ? (enum led_mode)m : MODE_SOLID;
+				state.zones[zone].brightness = d[2];
+				state.zones[zone].speed = d[3] ? d[3] : 1;
+			}
 		}
 		break;
 
@@ -276,7 +314,19 @@ static int raw_hid_listener(const zmk_event_t *eh)
 
 	case CMD_BRIGHTNESS:
 		if (ev->length >= 2) {
-			state.brightness = d[1];
+			state.zones[ZONE_AXIS].brightness = d[1];
+			state.zones[ZONE_UNDERGLOW].brightness = d[1];
+		}
+		break;
+
+	case CMD_ZONE_CONFIG:
+		if (ev->length >= 5 && d[1] < ZONE_COUNT) {
+			uint8_t zone = d[1];
+			uint8_t mode = d[2];
+			state.zones[zone].mode =
+				(mode < MODE_COUNT) ? (enum led_mode)mode : MODE_SOLID;
+			state.zones[zone].brightness = d[3];
+			state.zones[zone].speed = d[4] ? d[4] : 1;
 		}
 		break;
 
@@ -342,9 +392,12 @@ static int planckeys_led_init(void)
 
 	k_mutex_init(&lock);
 
-	state.mode = MODE_SOLID;
-	state.brightness = CONFIG_PLANCKEYS_LED_DEFAULT_BRIGHTNESS;
-	state.speed = 4;
+	for (int zone = 0; zone < ZONE_COUNT; zone++) {
+		state.zones[zone].mode = MODE_SOLID;
+		state.zones[zone].brightness = CONFIG_PLANCKEYS_LED_DEFAULT_BRIGHTNESS;
+		state.zones[zone].speed = 4;
+		phase[zone] = 0;
+	}
 	/* 默认画布：整块冰蓝，脱离网页也能靠 &led_next 循环出效果 */
 	for (int i = 0; i < LED_COUNT; i++) {
 		state.base[i].r = 0x00;

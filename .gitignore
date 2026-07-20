@@ -3,4 +3,4 @@ dist/
 schemas/
 *.log
 .DS_Store
-e'w'er
+**/.DS_Store
