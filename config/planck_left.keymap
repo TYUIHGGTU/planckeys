@@ -13,6 +13,42 @@
         };
     };
 
+    macros {
+        // Claude Code 的高频 slash command。宏只负责输入命令并回车，
+        // 因而要求焦点已经位于 Claude Code 的 prompt。
+        claude_clear: behavior_claude_clear {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            wait-ms = <40>;
+            tap-ms = <40>;
+            bindings = <&macro_tap &kp FSLH &kp C &kp L &kp E &kp A &kp R &kp ENTER>;
+        };
+
+        claude_diff: behavior_claude_diff {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            wait-ms = <40>;
+            tap-ms = <40>;
+            bindings = <&macro_tap &kp FSLH &kp D &kp I &kp F &kp F &kp ENTER>;
+        };
+
+        claude_tasks: behavior_claude_tasks {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            wait-ms = <40>;
+            tap-ms = <40>;
+            bindings = <&macro_tap &kp FSLH &kp T &kp A &kp S &kp K &kp S &kp ENTER>;
+        };
+
+        claude_branch: behavior_claude_branch {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            wait-ms = <40>;
+            tap-ms = <40>;
+            bindings = <&macro_tap &kp FSLH &kp B &kp R &kp A &kp N &kp C &kp H &kp ENTER>;
+        };
+    };
+
     keymap {
         compatible = "zmk,keymap";
 
@@ -21,23 +57,48 @@
         //  6  7  8  9 10 11
         // 12 13 14 15 16 17
         //      18 19 20 21     (18 = 编码器按压)
-        default_layer {
+        // 键帽正面布局（每一行对应实际的一列，从上到下）：
+        //
+        // ESC       F1 聚焦    F5 批准    Print 上下文    猫/模式    ←
+        // Cursor    F2 语音    F6 拒绝    Scroll 终端     ↑         ↓
+        // Claude    F3 发送    F7 Review  Insert 分支     狗/模型    →
+        // Codex     F4 新会话  F8 跟进    Pause 停止
+        //
+        // 三个应用层保持相同的物理语义，只翻译成各应用自己的快捷键。
+        // 图标键使用 &to 持久选层：游戏手柄=Cursor、咖啡=Claude、电动车=Codex。
+        cursor_layer {
             bindings = <
-&kp ESCAPE      &kp Q  &kp W  &kp E         &kp R      &kp T
-&kp TAB         &kp A  &kp S  &kp D         &kp F      &kp G
-&kp LEFT_SHIFT  &kp Z  &kp X  &kp C         &kp V      &kp B
-                       &kp LCTRL  &kp LEFT_ALT  &mo 1  &kp SPACE
+&kp LG(LS(BSPC))  &kp LG(I)         &kp LG(ENTER)  &kp LG(LS(L))  &kp LS(TAB)   &kp LG(LBKT)
+&to 0              &kp LG(LS(SPACE)) &kp LG(BSPC)   &kp LC(GRAVE)  &kp UP        &kp DOWN
+&to 1              &kp ENTER         &kp LG(E)       &kp LG(T)      &kp LG(FSLH)  &kp LG(RBKT)
+                                      &to 2           &kp LG(N)      &kp LC(ENTER) &kp LG(LS(BSPC))
             >;
 
             sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
 
-        lower_layer {
+        claude_layer {
             bindings = <
-&kp ESC         &trans    &kp PG_UP  &kp UP_ARROW  &kp PG_DN  &none
-&kp TAB         &kp HOME  &kp LEFT   &kp DOWN      &kp RIGHT  &trans
-&kp LEFT_SHIFT  &kp Z     &kp X      &kp C         &kp D      &kp SEMI
-                          &trans     &trans        &trans     &trans
+&kp LC(C)  &kp LC(O)  &kp ENTER  &kp LC(V)       &kp LS(TAB)  &kp LEFT
+&to 0      &kp LA(K)  &kp N      &claude_tasks   &kp UP       &kp DOWN
+&to 1      &kp ENTER  &claude_diff &claude_branch &kp LA(P)   &kp RIGHT
+                                &to 2           &claude_clear  &kp ENTER    &kp LC(C)
+            >;
+
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
+        };
+
+        // Codex/ChatGPT 中已有公开快捷键的动作直接发送组合键。
+        // 没有公开默认键的 Micro 动作预留 F13..F17，建议在
+        // Settings > Keyboard Shortcuts（若动作可见）或主机自动化中绑定：
+        // F13=Approve、F14=Decline、F15=Continue in new chat、
+        // F16=Fast mode、F17=Stop generation。
+        codex_layer {
+            bindings = <
+&kp ESC  &kp LG(B)       &kp F13        &kp LG(LS(P))  &kp LG(LS(P))  &kp LG(LBKT)
+&to 0    &kp LC(LS(D))   &kp F14        &kp LC(GRAVE)  &kp LG(LS(LBKT)) &kp DOWN
+&to 1    &kp ENTER       &kp LC(LS(G))  &kp F15        &kp F16        &kp LG(RBKT)
+                                      &to 2           &kp LG(N)      &kp LG(LA(N)) &kp F17
             >;
 
             sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
@@ -60,8 +121,7 @@
         combo_system {
             timeout-ms = <50>;
             key-positions = <0 6 12>;
-            bindings = <&mo 2>;
-            layers = <0>;
+            bindings = <&mo 3>;
         };
     };
 };
