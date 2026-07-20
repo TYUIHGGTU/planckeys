@@ -12,6 +12,9 @@
 | [`split-to-independent.md`](./split-to-independent.md) | 分体 → 两台独立键盘的原理与逐项改动（矩阵变换、物理布局、keymap、json、conf） |
 | [`led-web-control.md`](./led-web-control.md) | 自研模块接管 WS2812 + 网页控灯：架构、下行协议、涉及文件、**构建踩坑记录**、使用步骤 |
 | [`codex-micro-parity.md`](./codex-micro-parity.md) | 基于 28 颗独立 RGB LED 评估 Planckeys 对 Codex Micro 的可行、受限与不可行能力 |
+| [`codex-cdp-developer-mode.md`](./codex-cdp-developer-mode.md) | Codex 26.609 Developer mode（完整 CDP）：用法、CLI MCP 路径、与 led-web / codex-bridge 的结合 |
+| [`led-matrix-interactions.md`](./led-matrix-interactions.md) | 左板 4×6 点阵交互：字模、任务序号、贪吃蛇、状态映射 |
+| [`led-web-keymap-studio.md`](./led-web-keymap-studio.md) | 对照 ZMK Studio：改键 + LED 整合为 React/TS 控制台（`tools/console`）的可行性、Web 工程方案与分阶段计划 |
 
 ---
 
@@ -71,5 +74,6 @@
 - **状态显示。** 用灯带上几颗像素显示电量 / 蓝牙连接状态（类似参考项目的状态闪烁，但用 RGB 像素）。
 - **蓝牙控灯。** WebHID 仅 USB 可用；若要蓝牙可控，需本地程序走系统 HID API 或 BLE GATT，成本与不确定性较高。
 - **keymap 手感微调。** 右板拇指 `&mo 1` 的位置、进系统层的 combo 键位（当前左上三键 `<0 6 12>`）可按实际手感调整。
-- **清理项。** `build.yaml` 中 `planck_left` 重复的 `snippet:` 键；以及 `SOC_DCDC_NRF52X` / `KSCAN` / `BT_CTLR` 等 deprecated 告警（低优先）。
+- **清理项。** `build.yaml` 中 `planck_left` 重复的 `snippet:` 键；以及 `SOC_DCDC_NRF52X` / `KSCAN` / `BT_CTLR` 等 deprecated 告警（低优先）。详见 [`led-web-keymap-studio.md`](./led-web-keymap-studio.md) Phase 0。
 - **USB 端点余量。** 左板 Studio(CDC) + 第二 HID 并存，若后续加更多 USB 功能需留意 nRF52840 端点上限。
+- **统一控制台（改键 + LED）。** 新建 `tools/console`（React + TS + Vite），迁入 led-web，并接入官方 Studio RPC（Web Serial）。计划见 [`led-web-keymap-studio.md`](./led-web-keymap-studio.md)。
