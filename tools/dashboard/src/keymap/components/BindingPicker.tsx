@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import type { BehaviorSummary, Binding } from "../../device/studio/rpc";
 import { COMMON_KB_USAGES } from "../hidUsages";
 
@@ -37,62 +38,64 @@ export function BindingPicker({
   }, [keyPosition, current, behaviors]);
 
   return (
-    <div className="card binding-picker">
-      <h2>编辑位置 {keyPosition}</h2>
+    <Stack gap="sm">
+      <Text size="sm" fw={600}>
+        高级编辑 · 位置 {keyPosition}
+      </Text>
 
-      <label className="field">
-        Behavior
-        <select
-          value={behaviorId}
-          onChange={(e) => setBehaviorId(Number(e.target.value))}
-        >
-          {behaviors.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.displayName}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Select
+        label="Behavior"
+        size="xs"
+        value={String(behaviorId)}
+        onChange={(value) => value && setBehaviorId(Number(value))}
+        data={behaviors.map((b) => ({
+          value: String(b.id),
+          label: b.displayName,
+        }))}
+        searchable
+        comboboxProps={{ withinPortal: true }}
+      />
 
-      <label className="field">
-        常用键 (→ param1)
-        <select
-          value=""
-          onChange={(e) => {
-            if (e.target.value) setParam1(e.target.value);
-          }}
-        >
-          <option value="">选择填入 param1…</option>
-          {COMMON_KB_USAGES.map((u) => (
-            <option key={u.value} value={u.value}>
-              {u.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Select
+        label="常用键（填入 param1）"
+        size="xs"
+        placeholder="选择键值…"
+        value={null}
+        onChange={(value) => value && setParam1(value)}
+        data={COMMON_KB_USAGES.map((u) => ({
+          value: String(u.value),
+          label: u.label,
+        }))}
+        searchable
+        clearable
+        comboboxProps={{ withinPortal: true }}
+      />
 
-      <div className="param-row">
-        <label className="field shrink">
-          param1
-          <input
-            className="hex"
-            value={param1}
-            onChange={(e) => setParam1(e.target.value)}
-          />
-        </label>
-        <label className="field shrink">
-          param2
-          <input
-            className="hex"
-            value={param2}
-            onChange={(e) => setParam2(e.target.value)}
-          />
-        </label>
-      </div>
+      <Group grow gap="sm">
+        <TextInput
+          label="param1"
+          size="xs"
+          value={param1}
+          onChange={(event) => setParam1(event.currentTarget.value)}
+        />
+        <TextInput
+          label="param2"
+          size="xs"
+          value={param2}
+          onChange={(event) => setParam2(event.currentTarget.value)}
+        />
+      </Group>
 
-      <div className="toolbar">
-        <button
-          className="primary"
+      <Text size="xs" c="dimmed">
+        param 支持十进制或 0x 十六进制。`&kp` 的 param1 是编码后的 HID usage，可用上方「常用键」快速填入。
+      </Text>
+
+      <Group gap="xs" justify="flex-end">
+        <Button size="xs" variant="default" onClick={onClose}>
+          取消
+        </Button>
+        <Button
+          size="xs"
           onClick={() =>
             onApply({
               behaviorId,
@@ -102,12 +105,8 @@ export function BindingPicker({
           }
         >
           应用（立即生效）
-        </button>
-        <button onClick={onClose}>取消</button>
-      </div>
-      <div className="hint">
-        param 支持十进制或 0x 十六进制。`&kp` 的 param1 是编码后的 HID usage，可用上方「常用键」快速填入。
-      </div>
-    </div>
+        </Button>
+      </Group>
+    </Stack>
   );
 }

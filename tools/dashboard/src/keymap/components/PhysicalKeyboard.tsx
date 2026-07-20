@@ -6,7 +6,7 @@ import type {
   PhysicalLayout,
 } from "../../device/studio/rpc";
 import { BINDING_DRAG_TYPE, parseBinding } from "../candidateBindings";
-import { bindingLabel } from "../bindingLabels";
+import { bindingLabel, bindingTooltip } from "../bindingLabels";
 
 interface Props {
   layout: PhysicalLayout;
@@ -39,13 +39,17 @@ export function PhysicalKeyboard({
       {layout.keys.map((k, pos) => {
         const binding = layer.bindings[pos];
         const label = binding ? bindingLabel(behaviors, binding) : "—";
+        const title = binding
+          ? `${bindingTooltip(behaviors, binding)} · 位置 ${pos}`
+          : `空 · 位置 ${pos}`;
         return (
           <button
             key={pos}
             className={
               "kb-key" +
               (pos === selectedKey ? " selected" : "") +
-              (pos === dragTarget ? " drag-target" : "")
+              (pos === dragTarget ? " drag-target" : "") +
+              (binding ? "" : " empty")
             }
             style={
               {
@@ -56,7 +60,7 @@ export function PhysicalKeyboard({
                 "--kb-label-size": `${labelSize}px`,
               } as CSSProperties
             }
-            title={`${label} · 位置 ${pos}`}
+            title={title}
             onClick={() => onSelectKey(pos)}
             onDragOver={(event) => {
               if (!onDropBinding) return;

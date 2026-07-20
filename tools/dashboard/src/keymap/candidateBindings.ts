@@ -13,6 +13,8 @@ export interface BindingCandidate {
   group: string;
   binding: Binding;
   search: string;
+  /** 悬浮提示的完整说明（默认与 label 相同）。 */
+  title?: string;
 }
 
 const normalize = (value: string): string =>
@@ -84,6 +86,25 @@ const layerCandidates = (
   return candidates;
 };
 
+/** 系统类行为的友好短名（键帽/候选键有限宽度下避免出现 `behavior_led_ne…`）。 */
+const FRIENDLY_SYSTEM_NAMES: readonly { match: string; label: string }[] = [
+  { match: "lednext", label: "灯效切换" },
+  { match: "ledprev", label: "灯效上一个" },
+  { match: "led", label: "灯效" },
+  { match: "bootloader", label: "Bootloader" },
+  { match: "boot", label: "Bootloader" },
+  { match: "sysreset", label: "重启" },
+  { match: "reset", label: "重启" },
+  { match: "studiounlock", label: "Studio 解锁" },
+  { match: "studio", label: "Studio 解锁" },
+];
+
+const friendlySystemLabel = (displayName: string): string => {
+  const name = normalize(displayName);
+  const hit = FRIENDLY_SYSTEM_NAMES.find((entry) => name.includes(entry.match));
+  return hit ? hit.label : displayName.replace(/^&/, "");
+};
+
 const directBehaviorCandidates = (
   behaviors: BehaviorSummary[],
 ): BindingCandidate[] =>
@@ -94,15 +115,18 @@ const directBehaviorCandidates = (
         name.includes("boot") ||
         name.includes("reset") ||
         name.includes("lednext") ||
+        name.includes("led") ||
         name.includes("studio")
       );
     })
     .map((behavior) => ({
       id: `behavior-${behavior.id}`,
-      label: behavior.displayName.replace(/^&/, ""),
+      label: friendlySystemLabel(behavior.displayName),
       group: "系统",
       binding: { behaviorId: behavior.id, param1: 0, param2: 0 },
-      search: behavior.displayName.toLowerCase(),
+      title: behavior.displayName.replace(/^&/, ""),
+      // 完整原名进入搜索，便于用 behavior_led_next 等原名检索。
+      search: `${friendlySystemLabel(behavior.displayName)} ${behavior.displayName}`.toLowerCase(),
     }));
 
 export const buildBindingCandidates = (

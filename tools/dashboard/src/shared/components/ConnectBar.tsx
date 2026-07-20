@@ -1,3 +1,5 @@
+import { Badge, Button, Group, Text, Tooltip } from "@mantine/core";
+
 interface Props {
   label: string;
   connected: boolean;
@@ -16,17 +18,34 @@ export function ConnectBar({
   onDisconnect,
 }: Props) {
   return (
-    <div className="connect-bar">
-      <span className={"status" + (connected ? " ok" : "")}>
-        {label}: {connected ? detail ?? "已连接" : busy ? "连接中…" : "未连接"}
-      </span>
+    <Group gap={8} wrap="nowrap">
+      <Badge
+        variant={connected ? "light" : "default"}
+        color={connected ? "teal" : "gray"}
+        size="sm"
+        radius="sm"
+        styles={{ root: { textTransform: "none" } }}
+      >
+        {label}
+      </Badge>
+      <Tooltip
+        label={connected ? detail ?? "已连接" : busy ? "连接中…" : "未连接"}
+        withArrow
+        disabled={!connected && !busy}
+      >
+        <Text size="xs" c={connected ? "teal.6" : "dimmed"} maw={120} truncate>
+          {connected ? detail ?? "已连接" : busy ? "连接中…" : "未连接"}
+        </Text>
+      </Tooltip>
       {connected ? (
-        <button onClick={onDisconnect}>断开</button>
+        <Button size="xs" variant="default" onClick={onDisconnect}>
+          断开
+        </Button>
       ) : (
-        <button className="primary" disabled={busy} onClick={onConnect}>
-          连接 {label}
-        </button>
+        <Button size="xs" loading={busy} onClick={onConnect}>
+          连接
+        </Button>
       )}
-    </div>
+    </Group>
   );
 }
