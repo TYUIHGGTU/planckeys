@@ -6,9 +6,9 @@
   "description": "PlanckKeys 键盘控制台：网页里同时控灯（WebHID）与实时改键（Web Serial + ZMK Studio RPC）。",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm --prefix ../codex-bridge run build && tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "npm --prefix ../codex-bridge run build && tsc -b --noEmit",
     "lint": "eslint ."
   },
   "dependencies": {

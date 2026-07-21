@@ -7,6 +7,8 @@ export default defineConfig({
   base: "./",
   server: {
     port: 5173,
+    // 允许开发服务器读取上级 tools/ 目录：协议核心复用 ../codex-bridge/dist。
+    fs: { allow: [".."] },
   },
   build: {
     outDir: "dist",
