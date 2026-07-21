@@ -3,16 +3,6 @@ import { defaultSocketPath } from "./paths.js";
 
 export type SourceKind = "hooks" | "mock";
 
-/** Working animation style. Extensible; "snake" is default. */
-export type WorkingEffect = "snake" | "breathe" | "equalizer" | "spinner";
-
-const WORKING_EFFECTS: readonly WorkingEffect[] = [
-  "snake",
-  "breathe",
-  "equalizer",
-  "spinner",
-];
-
 export interface BridgeConfig {
   /** Where thread state comes from. `hooks` is the real, global source. */
   source: SourceKind;
@@ -27,16 +17,16 @@ export interface BridgeConfig {
   softUnreadFactor: number;
   /** How long complete stays at full brightness before soft-unread (ms). */
   completeHoldMs: number;
-  /** Host-side breathe period for working slots (ms). */
+  /** Host-side breathe period for working conversation cells (ms). */
   breathePeriodMs: number;
   /** Host-side blink period for requiresInput / error (ms). */
   blinkPeriodMs: number;
   /** Animation / complete-hold tick rate (frames per second). */
   animFps: number;
-  /** Working animation: "snake" (default) or "breathe". */
-  workingEffect: WorkingEffect;
-  /** Snake advance interval (ms) when workingEffect === "snake". */
-  snakeStepMs: number;
+  /** Global-row "working" scanner sweep period (ms). */
+  marqueePeriodMs: number;
+  /** Alert-region wave pulse period (ms). */
+  alertPeriodMs: number;
   /**
    * Auto-off: when nothing is working/needs-input/errored, blank the whole
    * board after this many ms since the last event (Codex Micro style, 3 min).
@@ -100,13 +90,8 @@ export const loadConfig = (argv: string[]): BridgeConfig => {
     breathePeriodMs: num(env.CODEX_BRIDGE_BREATHE_PERIOD_MS, 2000),
     blinkPeriodMs: num(env.CODEX_BRIDGE_BLINK_PERIOD_MS, 400),
     animFps: num(env.CODEX_BRIDGE_ANIM_FPS, 15),
-    workingEffect: ((): WorkingEffect => {
-      const raw = getFlagValue("--working") ?? env.CODEX_BRIDGE_WORKING_EFFECT;
-      return raw && (WORKING_EFFECTS as readonly string[]).includes(raw)
-        ? (raw as WorkingEffect)
-        : "snake";
-    })(),
-    snakeStepMs: num(env.CODEX_BRIDGE_SNAKE_STEP_MS, 320),
+    marqueePeriodMs: num(env.CODEX_BRIDGE_MARQUEE_PERIOD_MS, 1400),
+    alertPeriodMs: num(env.CODEX_BRIDGE_ALERT_PERIOD_MS, 900),
     idleOffMs: num(env.CODEX_BRIDGE_IDLE_OFF_MS, 180000),
     underglow: bool(env.CODEX_BRIDGE_UNDERGLOW, true),
     underglowFactor: num(env.CODEX_BRIDGE_UNDERGLOW_FACTOR, 0.35),

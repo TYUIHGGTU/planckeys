@@ -28,6 +28,8 @@ export class MockSource implements CodexSource {
     { id: "t4", platform: "codex" },
     { id: "t5", platform: "claude" },
     { id: "t6", platform: "cursor" },
+    { id: "t7", platform: "codebuddy" },
+    { id: "t8", platform: "codex" },
   ];
 
   start(): void {
@@ -36,7 +38,7 @@ export class MockSource implements CodexSource {
     log.info("Mock app-server started (offline self-test).");
     this.runCycle();
     // Repeat the scripted cycle so the demo keeps animating.
-    this.loopTimer = setInterval(() => this.runCycle(), 20000);
+    this.loopTimer = setInterval(() => this.runCycle(), 22000);
   }
 
   private schedule(step: ScriptStep): void {
@@ -65,93 +67,47 @@ export class MockSource implements CodexSource {
       }),
     );
 
-    const script: ScriptStep[] = [
-      {
-        afterMs: 1500,
-        threadId: "t1",
-        status: ThreadStatus.Working,
-        platform: "cursor",
-      },
-      {
-        afterMs: 2500,
-        threadId: "t2",
-        status: ThreadStatus.Working,
-        platform: "codebuddy",
-      },
-      {
-        afterMs: 4000,
-        threadId: "t1",
-        status: ThreadStatus.CompleteUnread,
-        platform: "cursor",
-      },
-      {
-        afterMs: 5000,
-        threadId: "t3",
-        status: ThreadStatus.Working,
-        platform: "workbuddy",
-      },
-      {
-        afterMs: 6500,
-        threadId: "t2",
-        status: ThreadStatus.RequiresInput,
-        platform: "codebuddy",
-      },
-      {
-        afterMs: 8000,
-        threadId: "t4",
-        status: ThreadStatus.Working,
-        platform: "codex",
-      },
-      {
-        afterMs: 9000,
-        threadId: "t3",
-        status: ThreadStatus.Error,
-        platform: "workbuddy",
-      },
-      {
-        afterMs: 10500,
-        threadId: "t2",
-        status: ThreadStatus.Working,
-        platform: "codebuddy",
-      },
-      {
-        afterMs: 11500,
-        threadId: "t2",
-        status: ThreadStatus.CompleteUnread,
-        platform: "codebuddy",
-      },
-      {
-        afterMs: 12500,
-        threadId: "t3",
-        status: ThreadStatus.Idle,
-        platform: "workbuddy",
-      },
-      {
-        afterMs: 13500,
-        threadId: "t4",
-        status: ThreadStatus.CompleteUnread,
-        platform: "codex",
-      },
-      {
-        afterMs: 14500,
-        threadId: "t5",
-        status: ThreadStatus.Working,
-        platform: "claude",
-      },
-      {
-        afterMs: 16000,
-        threadId: "t5",
-        status: ThreadStatus.CompleteUnread,
-        platform: "claude",
-      },
-      {
-        afterMs: 17000,
-        threadId: "t1",
-        status: ThreadStatus.Idle,
-        platform: "cursor",
-      },
-    ];
-    script.forEach((s) => this.schedule(s));
+    const byId = new Map(this.threads.map((t) => [t.id, t.platform]));
+    const step = (afterMs: number, id: string, status: ThreadStatus): void =>
+      this.schedule({
+        afterMs,
+        threadId: id,
+        status,
+        platform: byId.get(id) ?? "unknown",
+      });
+
+    // Ramp several conversations into "working": global row is amber marquee,
+    // the busy convo cells breathe in their platform colors.
+    step(1200, "t1", ThreadStatus.Working);
+    step(2000, "t2", ThreadStatus.Working);
+    step(2800, "t3", ThreadStatus.Working);
+    step(3600, "t4", ThreadStatus.Working);
+
+    // A completion lands while others keep going (stays working globally).
+    step(4800, "t1", ThreadStatus.CompleteUnread);
+    step(5600, "t5", ThreadStatus.Working);
+
+    // Needs input: global row flips to yellow, alert region wakes amber.
+    step(6400, "t2", ThreadStatus.RequiresInput);
+    step(8000, "t2", ThreadStatus.Working);
+
+    // Error: global row goes red, alert region pulses red.
+    step(8800, "t6", ThreadStatus.Working);
+    step(9600, "t3", ThreadStatus.Error);
+    step(11000, "t3", ThreadStatus.Working);
+
+    // Fill all 8 conversation cells.
+    step(11800, "t7", ThreadStatus.Working);
+    step(12600, "t8", ThreadStatus.Working);
+
+    // Everyone finishes -> global row settles to green (hold, then dim).
+    step(13600, "t2", ThreadStatus.CompleteUnread);
+    step(14200, "t3", ThreadStatus.CompleteUnread);
+    step(14800, "t4", ThreadStatus.CompleteUnread);
+    step(15400, "t5", ThreadStatus.CompleteUnread);
+    step(16000, "t6", ThreadStatus.CompleteUnread);
+    step(16600, "t7", ThreadStatus.CompleteUnread);
+    step(17200, "t8", ThreadStatus.CompleteUnread);
   }
 
   stop(): void {

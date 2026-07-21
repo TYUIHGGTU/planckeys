@@ -34,19 +34,6 @@ export const AGENT_PLATFORMS: readonly AgentPlatform[] = [
 export const isAgentPlatform = (v: unknown): v is AgentPlatform =>
   typeof v === "string" && (AGENT_PLATFORMS as readonly string[]).includes(v);
 
-/**
- * Arbitration priority when a slot could be described by several states, and
- * for aggregating the underglow. Higher wins.
- */
-export const STATUS_PRIORITY: Record<ThreadStatus, number> = {
-  [ThreadStatus.Error]: 6,
-  [ThreadStatus.RequiresInput]: 5,
-  [ThreadStatus.CompleteUnread]: 4,
-  [ThreadStatus.Working]: 3,
-  [ThreadStatus.Idle]: 2,
-  [ThreadStatus.Offline]: 1,
-};
-
 /** Brand / identity color per platform (working & complete use this hue). */
 export const PLATFORM_COLOR: Record<AgentPlatform, Rgb> = {
   cursor: rgb(0xe8, 0xee, 0xf5),
@@ -58,12 +45,27 @@ export const PLATFORM_COLOR: Record<AgentPlatform, Rgb> = {
   unknown: rgb(0xc0, 0xc0, 0xc0),
 };
 
-/** Attention colors that override platform hue. */
+/** Attention colors that override platform hue (per-conversation cells). */
 export const ATTENTION_COLOR = {
-  /** Needs approval / input — fast blink. */
+  /** Needs approval / input — amber fast blink. */
   requiresInput: rgb(0xff, 0x6d, 0x00),
-  /** Failure — yellow fast blink. */
-  error: rgb(0xff, 0xc1, 0x07),
+  /** Failure — red fast blink. */
+  error: rgb(0xff, 0x17, 0x44),
+} as const;
+
+/**
+ * Global status-bar colors (row 0). These are semantic, not platform identity:
+ * the top row aggregates every conversation into one at-a-glance signal.
+ */
+export const GLOBAL_COLOR = {
+  /** In progress — amber back-and-forth marquee. */
+  working: rgb(0xff, 0x8f, 0x00),
+  /** Needs a human — yellow blink. */
+  requiresInput: rgb(0xff, 0xd6, 0x00),
+  /** Failure — red blink. */
+  error: rgb(0xff, 0x17, 0x44),
+  /** All done, unread — green (bright hold, then dim). */
+  completeUnread: rgb(0x00, 0xc8, 0x53),
 } as const;
 
 export interface SlotState {
@@ -81,9 +83,4 @@ export interface SlotState {
   read: boolean;
   /** epoch ms when completeUnread was entered; drives the bright-hold window. */
   completedAt: number | null;
-  /**
-   * Per-platform task order number (1..9, cycles). Assigned when the session
-   * first binds a slot; shown as a dot-matrix digit on completion.
-   */
-  taskNumber: number;
 }

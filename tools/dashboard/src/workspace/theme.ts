@@ -1,23 +1,59 @@
 import { createTheme, type MantineColorsTuple } from "@mantine/core";
 
-/** 品牌主色（indigo/violet），与旧版 accent 对齐：浅色 ~#5266df，深色 ~#8b9dff。 */
+/**
+ * 品牌主色：琥珀铜 / 焦糖（brass），呼应机械键盘的黄铜质感。
+ * 刻意避开冷调靛蓝/紫，浅色态 ~#a86b25，深色态 ~#cd9549。
+ * 配合 autoContrast，填充按钮会自动挑选可读的深/浅文字。
+ */
 const brand: MantineColorsTuple = [
-  "#eef1ff",
-  "#dbe0ff",
-  "#b3c0ff",
-  "#889cff",
-  "#647cfa",
-  "#4d68f4",
-  "#4160f2",
-  "#3350d8",
-  "#2b47c2",
-  "#203aac",
+  "#faf4e8",
+  "#f1e5cf",
+  "#e6c9a1",
+  "#d8ac6f",
+  "#cd9549",
+  "#c07f2c",
+  "#a86b25",
+  "#895424",
+  "#6a3f1d",
+  "#4a2c14",
+];
+
+/** 暖调石墨：深色态整体从冷蓝黑改为带一点棕的中性灰，去掉“科技蓝”味。 */
+const dark: MantineColorsTuple = [
+  "#d9d4cc",
+  "#b7b1a7",
+  "#948d82",
+  "#6c665d",
+  "#48433c",
+  "#37332d",
+  "#2a2723",
+  "#211e1a",
+  "#1a1714",
+  "#131110",
+];
+
+/** 暖调中性灰：浅色态的表面/边框/次要文字，带一点米色而非冷灰。 */
+const gray: MantineColorsTuple = [
+  "#f7f5f1",
+  "#efece6",
+  "#e5e1d9",
+  "#d7d2c8",
+  "#c3bcaf",
+  "#a39a8b",
+  "#837a6c",
+  "#625a4e",
+  "#453f36",
+  "#2a2620",
 ];
 
 export const theme = createTheme({
   primaryColor: "brand",
   primaryShade: { light: 6, dark: 4 },
-  colors: { brand },
+  autoContrast: true,
+  luminanceThreshold: 0.45,
+  colors: { brand, dark, gray },
+  white: "#fbfaf7",
+  black: "#1a1714",
   defaultRadius: "md",
   fontFamily:
     'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',

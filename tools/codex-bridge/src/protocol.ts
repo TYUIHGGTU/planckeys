@@ -44,24 +44,9 @@ export const MAX_PX_PER_REPORT = Math.floor((REPORT_SIZE - 3) / 3);
 export const UNDERGLOW_INDICES = [0, 1, 2, 3, 4, 5] as const;
 
 /**
- * Top physical row, used as the 6 Codex Agent Keys.
- * Confirmed axis-LED front layout (docs/codex-micro-parity.md §2.1):
- *
- *   15 14 13 12 11 10   <- top row = Agent 1..6
- *   16 17 18 19 20 21
- *   27 26 25 24 23 22
- *         9  8  7  6
- *
- * Slot 0 is the left-most Agent Key.
- */
-export const AGENT_LED_INDICES = [15, 14, 13, 12, 11, 10] as const;
-
-export const AGENT_SLOT_COUNT = AGENT_LED_INDICES.length;
-
-/**
  * All front-visible axis LEDs (chain index 6..27, i.e. every key LED on the
- * left board). Underglow 0..5 is hidden and handled separately. Used by the
- * "whole board = active platform color" render mode.
+ * left board). Underglow 0..5 is hidden and handled separately. Used to blank
+ * the canvas before each dashboard frame.
  */
 export const VISIBLE_LED_INDICES: readonly number[] = Array.from(
   { length: LED_COUNT - UNDERGLOW_INDICES.length },
@@ -93,15 +78,6 @@ export const AXIS_LAYOUT: readonly (number | null)[][] = [
 export const MATRIX_ROWS = AXIS_LAYOUT.length; // 6
 export const MATRIX_COLS = AXIS_LAYOUT[0].length; // 4
 
-/** Main glyph / snake area: columns 0..2, all 6 rows (18 LEDs, fully populated). */
-export const MAIN_COLS = 3;
-
-/**
- * Right-hand side bar (column 3): chain indices 6,7,8,9 at rows 0..3. Used to
- * hint "other platforms are still active in the background".
- */
-export const SIDEBAR_INDICES: readonly number[] = [6, 7, 8, 9];
-
 /** Map a matrix cell to its chain index, or null if empty / out of range. */
 export const cellIndex = (row: number, col: number): number | null => {
   if (row < 0 || row >= MATRIX_ROWS || col < 0 || col >= MATRIX_COLS) {
@@ -109,6 +85,42 @@ export const cellIndex = (row: number, col: number): number | null => {
   }
   return AXIS_LAYOUT[row][col];
 };
+
+/** Chain indices for one matrix row, left-to-right, skipping empty cells. */
+const rowCells = (row: number): number[] =>
+  AXIS_LAYOUT[row].filter((x): x is number => x !== null);
+
+/**
+ * Dashboard zones. The board is read as a portrait 4-col × 6-row grid:
+ *
+ *   r0            -> global status bar (aggregate of all conversations)
+ *   r1, r2        -> up to 8 per-conversation cells (left-to-right, r1 then r2)
+ *   r3, r4, r5    -> attention alert region (off unless input needed / errored)
+ */
+export const GLOBAL_ROW_INDICES: readonly number[] = rowCells(0);
+
+export const CONVO_INDICES: readonly number[] = [...rowCells(1), ...rowCells(2)];
+
+/** Number of per-conversation cells (rows 1-2). */
+export const CONVO_SLOT_COUNT = CONVO_INDICES.length; // 8
+
+export interface MatrixCell {
+  index: number;
+  row: number;
+  col: number;
+}
+
+/** Alert-region cells (rows 3-5) with their grid position (for the wave phase). */
+export const ALERT_CELLS: readonly MatrixCell[] = (() => {
+  const out: MatrixCell[] = [];
+  for (let row = 3; row < MATRIX_ROWS; row++) {
+    for (let col = 0; col < MATRIX_COLS; col++) {
+      const index = AXIS_LAYOUT[row][col];
+      if (index !== null) out.push({ index, row, col });
+    }
+  }
+  return out;
+})();
 
 export interface Rgb {
   r: number;
