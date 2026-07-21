@@ -1,0 +1,15 @@
+packages:
+  - "led-protocol"
+  - "agent-bridge"
+  - "dashboard"
+  - "desktop"
+
+# pnpm v11 默认拦截依赖的 postinstall/构建脚本，这里显式放行本仓需要的原生/二进制依赖。
+allowBuilds:
+  electron: true
+  esbuild: true
+  node-hid: true
+  "@swc/core": true
+  protobufjs: true
+  # 其 postinstall 依赖自身 devDep run-script-os，在 pnpm 隔离下不可见且对使用方非必需，跳过。
+  "@zmkfirmware/zmk-studio-ts-client": false

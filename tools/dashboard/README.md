@@ -16,17 +16,17 @@
 
 ## 开发 / 构建
 
+本包是 **pnpm monorepo**（根在 `tools/`）的一员，先在根 `pnpm install`：
+
 ```bash
-cd tools/dashboard
-npm install        # @zmkfirmware 作用域走官方源（见 .npmrc）
-npm run dev        # http://localhost:5173
-npm run build      # 产出 dist/
-npm run preview    # 预览生产构建
-npm run typecheck  # 仅类型检查（CI 可用）
-npm run lint       # eslint
+cd tools && pnpm install                     # 一次性装好所有工作区包
+pnpm --filter @planckeys/dashboard dev       # http://localhost:5173（根用 `pnpm dashboard` 亦可）
+pnpm --filter @planckeys/dashboard build     # 产出 dist/（会先构建依赖 @planckeys/led-protocol）
+pnpm --filter @planckeys/dashboard typecheck
+pnpm --filter @planckeys/dashboard lint
 ```
 
-> `.npmrc` 只把 `@zmkfirmware` 作用域指向 `registry.npmjs.org`（腾讯等镜像对该作用域会 403），其余依赖仍走你的默认 registry。
+> 工作区根 `tools/.npmrc` 把 `@zmkfirmware` 作用域指向 `registry.npmjs.org`（腾讯等镜像对该作用域会 403），其余依赖仍走你的默认 registry。
 
 ## 使用
 
@@ -48,7 +48,7 @@ src/
 └── shared/           # 连接/日志组件 + hooks(useLedDevice/useStudioDevice)
 ```
 
-原则：`device/` 层不含 React；工作台只通过 hooks 写设备。协议常量与固件 `src/led_control.c`、`tools/codex-bridge/src/protocol.ts` 三方对齐。
+原则：`device/` 层不含 React；工作台只通过 hooks 写设备。`device/hid/protocol.ts` 的线材协议核心复用工作区单源包 `@planckeys/led-protocol`（与固件 `src/led_control.c` 对齐），本地只额外保留 `AXIS_INDICES` 等布局解读常量。
 
 ## 现状与边界（MVP）
 

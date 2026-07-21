@@ -1,20 +1,21 @@
 {
-  "name": "planckeys-console",
+  "name": "@planckeys/dashboard",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "description": "PlanckKeys 键盘控制台：网页里同时控灯（WebHID）与实时改键（Web Serial + ZMK Studio RPC）。",
   "scripts": {
     "dev": "vite",
-    "build": "npm --prefix ../codex-bridge run build && tsc -b && vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "npm --prefix ../codex-bridge run build && tsc -b --noEmit",
+    "typecheck": "tsc -b --noEmit",
     "lint": "eslint ."
   },
   "dependencies": {
     "@mantine/core": "^8.3.18",
     "@mantine/hooks": "^8.3.18",
     "@mantine/notifications": "^8.3.18",
+    "@planckeys/led-protocol": "workspace:*",
     "@zmkfirmware/zmk-studio-ts-client": "^0.0.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

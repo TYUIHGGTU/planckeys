@@ -1,4 +1,4 @@
-# Planckeys Codex Bridge
+# Planckeys Agent Bridge
 
 把 Codex（以及 CodeBuddy / Claude Code / Cursor）的运行状态**被动地**反映到 Planckeys
 左板的 RGB LED 上，还原 Codex Micro 的"6 线程状态墙"体验：**你照常在任意终端的 CLI
@@ -182,18 +182,20 @@ subagent 运行期间父对话本就处于 working（Task 调用未返回），�
 
 ## 快速开始
 
+本包是 **pnpm monorepo**（根在 `tools/`）的一员，先在根安装并构建：
+
 ```bash
-cd tools/codex-bridge
-npm install
-npm run build
+cd tools
+pnpm install                                   # 装好所有工作区包
+pnpm --filter @planckeys/agent-bridge build    # 会先构建依赖 @planckeys/led-protocol
 
 # 1. 安装 hook（自动备份已有文件、保留其它设置、幂等）。按你用的工具选一个或多个：
-npm run install-hooks              # Codex     -> ~/.codex/hooks.json
-npm run install-hooks:codebuddy    # CodeBuddy -> ~/.codebuddy/settings.json 的 hooks 键
-npm run install-hooks:workbuddy    # WorkBuddy桌面端 -> ~/.workbuddy/settings.json 的 hooks 键
-npm run install-hooks:claude       # Claude    -> ~/.claude/settings.json 的 hooks 键
-npm run install-hooks:cursor       # Cursor    -> ~/.cursor/hooks.json（扁平格式 + version）
-#   自定义 socket： node dist/index.js install-hooks cursor --sock /path/to.sock
+pnpm --filter @planckeys/agent-bridge install-hooks              # Codex     -> ~/.codex/hooks.json
+pnpm --filter @planckeys/agent-bridge install-hooks:codebuddy    # CodeBuddy -> ~/.codebuddy/settings.json 的 hooks 键
+pnpm --filter @planckeys/agent-bridge install-hooks:workbuddy    # WorkBuddy -> ~/.workbuddy/settings.json 的 hooks 键
+pnpm --filter @planckeys/agent-bridge install-hooks:claude       # Claude    -> ~/.claude/settings.json 的 hooks 键
+pnpm --filter @planckeys/agent-bridge install-hooks:cursor       # Cursor    -> ~/.cursor/hooks.json（扁平格式 + version）
+#   自定义 socket： node agent-bridge/dist/index.js install-hooks cursor --sock /path/to.sock
 
 # 2. 让 hook 生效
 #    Codex：打开 codex TUI，输入 /hooks 审查并 trust（否则会被跳过）
@@ -202,17 +204,19 @@ npm run install-hooks:cursor       # Cursor    -> ~/.cursor/hooks.json（扁平�
 codex   # 仅 Codex 需要这步做 trust
 
 # 3. USB 接左板，启动常驻 daemon
-npm start
-#   调试不接键盘： node dist/index.js --no-hid --log debug
+pnpm --filter @planckeys/agent-bridge start
+#   调试不接键盘： node agent-bridge/dist/index.js --no-hid --log debug
 
 # 之后在任意终端 codex / CodeBuddy / Claude / Cursor / 桌面端里干活，对应 Agent 灯就会变化。
-# 卸载： node dist/index.js uninstall-hooks <codex|codebuddy|workbuddy|claude|cursor>
+# 卸载： node agent-bridge/dist/index.js uninstall-hooks <codex|codebuddy|workbuddy|claude|cursor>
 ```
+
+> 通常直接用桌面 App（`@planckeys/desktop`）托盘启停即可，无需手动敲这些命令。
 
 离线自测（无需 codex，打印每帧；有键盘则同时驱动）：
 
 ```bash
-npm run mock
+pnpm --filter @planckeys/agent-bridge mock
 ```
 
 ## 配置
@@ -222,7 +226,7 @@ npm run mock
 | 标志                                           | 环境变量                          | 默认                                  | 说明                                                                    |
 | ---------------------------------------------- | --------------------------------- | ------------------------------------- | ----------------------------------------------------------------------- |
 | `--mock`                                       | `CODEX_BRIDGE_MOCK`               | false                                 | 用内置模拟器替代真实数据源（离线自测）                                  |
-| `--sock <path>`                                | `PLANCKEYS_BRIDGE_SOCK`           | `$TMPDIR/planckeys-codex-bridge.sock` | daemon 与 forwarder 交会的 unix socket                                  |
+| `--sock <path>`                                | `PLANCKEYS_BRIDGE_SOCK`           | `$TMPDIR/planckeys-agent-bridge.sock` | daemon 与 forwarder 交会的 unix socket                                  |
 | `--no-hid` / `--dry-run`                       | —                                 | false                                 | 不打开键盘，只打印帧（调试）                                            |
 | `--brightness <0-255>`                         | `CODEX_BRIDGE_BRIGHTNESS`         | 160                                   | 全局亮度（0xA1）                                                        |
 | `--binding recent\|fixed`                      | —                                 | recent                                | 槽位绑定策略                                                            |
@@ -251,8 +255,10 @@ npm run mock
 
 ## Raw HID 协议
 
-与固件 `src/led_control.c`、`tools/led-web/app.js`、`docs/led-web-control.md` 完全一致：
-usage page `0xFF60`、32 字节 report、`0xA2` 每包最多 9 颗 RGB。见 `src/protocol.ts`。
+与固件 `src/led_control.c`、`docs/led-web-control.md` 完全一致：usage page `0xFF60`、
+32 字节 report、`0xA2` 每包最多 9 颗 RGB。线材协议核心现为**工作区单源包**
+`@planckeys/led-protocol`（dashboard 亦复用它）；`src/protocol.ts` 再导出该包并附加
+agent-bridge 自己的仪表盘点阵渲染常量。
 
 ## 官方实现方案（Codex Micro 真机，客观记录）
 
@@ -346,7 +352,7 @@ src/
   config.ts         # 配置与默认值
   logger.ts
   paths.ts          # socket / hooks.json 路径
-  protocol.ts       # Raw HID 协议与 LED 布局常量（仪表盘分区）、报文构建
+  protocol.ts       # 再导出 @planckeys/led-protocol（线材协议单源）+ 仪表盘点阵渲染常量
   types.ts          # 状态枚举、平台色、全局语义色
   effects.ts        # 呼吸/快闪亮度系数
   threadStore.ts    # 8 槽状态机、绑定、仪表盘三区渲染、底灯、自动熄灭

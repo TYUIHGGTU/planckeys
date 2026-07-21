@@ -1,11 +1,9 @@
 /**
  * PlanckKeys 左板 Raw HID 协议 —— 单一真源（usage page 0xFF60）。
  *
- * 这是 codex-bridge / dashboard / desktop 共用的「线材协议 + 板载布局 + 报文打包」核心，
+ * 这是 agent-bridge / dashboard / desktop 共用的「线材协议 + 板载布局 + 报文打包」核心，
  * 必须与固件 `src/led_control.c` 对齐。各消费方特有的「渲染/布局解读」常量不放这里，
- * 由各自的 protocol.ts 保留（codex-bridge 的会话点阵、dashboard 的 AXIS_INDICES 等）。
- *
- * 该文件自包含、无内部相对依赖，便于被其它工具直接引用为单源。
+ * 由各自的 protocol.ts 保留（agent-bridge 的会话点阵、dashboard 的 AXIS_INDICES 等）。
  */
 
 export const USAGE_PAGE = 0xff60;
@@ -112,7 +110,7 @@ export const buildFillReport = (color: Rgb): Uint8Array =>
 /**
  * 组 0xA5 ZONE_CONFIG 报文。兼容两种历史签名：
  * - 对象式：`buildZoneConfigReport(zone, { mode, brightness, speed })`（dashboard）
- * - 四参式：`buildZoneConfigReport(zone, mode, brightness, speed)`（codex-bridge）
+ * - 四参式：`buildZoneConfigReport(zone, mode, brightness, speed)`（agent-bridge）
  */
 export function buildZoneConfigReport(
   zone: LedZone,

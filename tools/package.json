@@ -1,0 +1,19 @@
+{
+  "name": "planckeys-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Planckeys 工具集 pnpm monorepo：协议单源、agent-bridge 守护进程、dashboard 控制台、desktop 菜单栏 App。",
+  "packageManager": "pnpm@11.15.1",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "desktop": "pnpm --filter @planckeys/desktop dev",
+    "dashboard": "pnpm --filter @planckeys/dashboard dev",
+    "bridge": "pnpm --filter @planckeys/agent-bridge start",
+    "bridge:mock": "pnpm --filter @planckeys/agent-bridge mock"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

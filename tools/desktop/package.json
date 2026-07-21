@@ -1,8 +1,8 @@
 {
-  "name": "planckeys-desktop",
+  "name": "@planckeys/desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Planckeys 菜单栏 App：以子进程方式监管 codex-bridge 守护进程，支持开机自启，免去每次命令行启动（第一阶段）。",
+  "description": "Planckeys 菜单栏 App：以子进程方式监管 agent-bridge 守护进程，支持开机自启，免去每次命令行启动（第一阶段）。",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -1,4 +1,5 @@
 import { app } from "electron";
+import { join } from "node:path";
 import { bridge } from "./bridge";
 import { controlWindow_openIfRequested } from "./controlWindow";
 import { logStore } from "./logStore";
@@ -11,6 +12,12 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
+  // 包名改为 scope（@planckeys/desktop）后，固定 app 名与 userData 路径，避免路径里出现
+  // "@planckeys/desktop" 的斜杠，并保持与旧版一致的设置/日志/登录项位置。
+  // 注意：userData 由原生早期解析，仅靠 setName 太晚，必须显式 setPath。
+  app.setName("planckeys-desktop");
+  app.setPath("userData", join(app.getPath("appData"), "planckeys-desktop"));
+
   app.on("second-instance", () => {
     logStore.append("[desktop] 检测到第二个实例启动请求，已忽略（保持单实例）。");
   });

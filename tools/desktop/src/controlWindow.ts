@@ -57,11 +57,15 @@ const wirePermissions = (ses: Session): void => {
 
 const buildDashboard = (): Promise<boolean> =>
   new Promise((res) => {
-    logStore.append("[desktop] 构建控制台（dashboard）…");
-    const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+    logStore.append("[desktop] 构建控制台（dashboard，含 led-protocol）…");
+    const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
     let child: ChildProcess;
     try {
-      child = spawn(npm, ["run", "build"], { cwd: dashboardDir() });
+      child = spawn(
+        pnpm,
+        ["--filter", "@planckeys/dashboard...", "run", "build"],
+        { cwd: dashboardDir() },
+      );
     } catch (e) {
       logStore.append(`[desktop] 无法启动控制台构建：${(e as Error).message}`);
       res(false);

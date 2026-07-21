@@ -2,7 +2,6 @@ import { app } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-export type WorkingEffect = "snake" | "spinner" | "equalizer" | "breathe";
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface DesktopSettings {
@@ -10,8 +9,6 @@ export interface DesktopSettings {
   autoLaunch: boolean;
   /** App 启动后自动拉起 bridge 守护进程。 */
   autoStartBridge: boolean;
-  /** working 灯效，透传给 CODEX_BRIDGE_WORKING_EFFECT。 */
-  workingEffect: WorkingEffect;
   /** 全局亮度 0..255，透传给 CODEX_BRIDGE_BRIGHTNESS。 */
   brightness: number;
   /** 日志级别，透传给 CODEX_BRIDGE_LOG。 */
@@ -20,14 +17,13 @@ export interface DesktopSettings {
   dryRun: boolean;
   /** 覆盖 node 可执行文件路径；留空则用 PATH 里的 node。 */
   nodePath: string;
-  /** 覆盖 codex-bridge 工程目录；留空则相对本 App 定位。 */
+  /** 覆盖 agent-bridge 工程目录；留空则相对本 App 定位。 */
   bridgeDir: string;
 }
 
 const DEFAULTS: DesktopSettings = {
   autoLaunch: true,
   autoStartBridge: true,
-  workingEffect: "snake",
   brightness: 160,
   logLevel: "info",
   dryRun: false,

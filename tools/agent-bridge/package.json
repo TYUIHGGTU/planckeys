@@ -1,11 +1,11 @@
 {
-  "name": "planckeys-codex-bridge",
+  "name": "@planckeys/agent-bridge",
   "version": "0.1.0",
   "private": true,
   "description": "Passive monitor that reflects Codex activity from any terminal CLI and the desktop app on Planckeys' RGB LEDs via codex hooks + Raw HID (usage page 0xFF60), reproducing the Codex Micro 6-thread status wall.",
   "type": "module",
   "bin": {
-    "codex-bridge": "./dist/index.js"
+    "agent-bridge": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -24,6 +24,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@planckeys/led-protocol": "workspace:*",
     "node-hid": "^3.1.2"
   },
   "devDependencies": {

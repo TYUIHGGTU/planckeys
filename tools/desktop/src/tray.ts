@@ -12,12 +12,11 @@ import { bridge, HOOK_TARGETS, type BridgeState } from "./bridge";
 import { openControlWindow } from "./controlWindow";
 import { logStore } from "./logStore";
 import { openLogWindow } from "./logWindow";
-import { loadSettings, saveSettings, type WorkingEffect } from "./settings";
+import { loadSettings, saveSettings } from "./settings";
 import { syncLoginItem } from "./autolaunch";
 
 let tray: Tray | null = null;
 
-const EFFECTS: WorkingEffect[] = ["snake", "spinner", "equalizer", "breathe"];
 const BRIGHTNESS_STEPS = [64, 96, 128, 160, 200, 255];
 
 /** 画一个 3×2 圆点阵作为菜单栏模板图标（黑色 + alpha，随明暗自适应）。 */
@@ -119,21 +118,6 @@ export const buildMenu = (): void => {
       : { label: "启动 Bridge", click: () => void bridge.start() },
     { label: "重启 Bridge", enabled: running, click: () => void bridge.restart() },
     { type: "separator" },
-    {
-      label: "working 灯效",
-      submenu: EFFECTS.map(
-        (e): MenuItemConstructorOptions => ({
-          label: e,
-          type: "radio",
-          checked: s.workingEffect === e,
-          click: () => {
-            saveSettings({ workingEffect: e });
-            if (bridge.isRunning()) void bridge.restart();
-            buildMenu();
-          },
-        }),
-      ),
-    },
     {
       label: "亮度",
       submenu: BRIGHTNESS_STEPS.map(

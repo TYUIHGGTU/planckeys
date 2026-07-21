@@ -1,11 +1,11 @@
 /**
- * codex-bridge 的协议入口。
+ * agent-bridge 的协议入口。
  *
- * 「线材协议 + 板载布局 + 报文打包」核心已抽到单一真源 `./protocol/core.js`，
- * 这里全部再导出；下面只保留 codex-bridge 自己的「会话点阵渲染」解读常量
+ * 「线材协议 + 板载布局 + 报文打包」核心已抽到单一真源包 `@planckeys/led-protocol`，
+ * 这里全部再导出；下面只保留 agent-bridge 自己的「会话点阵渲染」解读常量
  * （dashboard 有各自的一份，如 AXIS_INDICES）。
  */
-export * from "./protocol/core.js";
+export * from "@planckeys/led-protocol";
 
 import {
   AXIS_LAYOUT,
@@ -13,7 +13,7 @@ import {
   UNDERGLOW_INDICES,
   clampByte,
   type Rgb,
-} from "./protocol/core.js";
+} from "@planckeys/led-protocol";
 
 /**
  * All front-visible axis LEDs (chain index 6..27). Underglow 0..5 is hidden and
