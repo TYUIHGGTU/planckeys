@@ -36,7 +36,7 @@ Codex / CodeBuddy(含 WorkBuddy 桌面端，配置在 `~/.workbuddy/settings.jso
 | 配置文件     | `~/.codex/hooks.json` | `~/.codebuddy/settings.json` 的 `hooks` | `~/.claude/settings.json` 的 `hooks` | `~/.cursor/hooks.json`                                |
 | 配置结构     | 嵌套 matcher 分组     | 同左                                    | 同左                                 | 扁平 `[{ command }]` + `version: 1`                   |
 | 线程键       | `session_id`          | `session_id`                            | `session_id`                         | `conversation_id`（`sessionStart` 亦有 `session_id`） |
-| "需输入"事件 | `PermissionRequest`   | `Notification`                          | `Notification`                       | 无（不琥珀闪）                                        |
+| "需输入"事件 | `PermissionRequest`   | `Notification`                          | `Notification`                       | 无（AskQuestion / 审批均不琥珀闪，见下）              |
 | 完成事件     | `Stop`                | `Stop`                                  | `Stop`                               | `stop`（`status: error` 可黄闪）                      |
 | 信任         | `/hooks` 按哈希信任   | 重启即可                                | 重启即可                             | hooks.json 热加载；必要时重启 Cursor                  |
 
@@ -118,12 +118,27 @@ r5(行6)  15  16  27   ·    ┘
 | idle / offline | `SessionStart` / Cursor `sessionStart`；空槽                                                            |
 | working        | `UserPromptSubmit`·`PreToolUse`·`PostToolUse` / Cursor `beforeSubmitPrompt`·`preToolUse`·`postToolUse`  |
 | completeUnread | `Stop` / Cursor `stop`                                                                                  |
-| requiresInput  | `PermissionRequest`(Codex) / `Notification`(CodeBuddy·Claude)；Cursor 无此事件                          |
+| requiresInput  | `PermissionRequest`(Codex) / `Notification`(CodeBuddy·WorkBuddy·Claude)；**Cursor 无此事件**            |
 | error          | 仅 Cursor `stop` 且 `status: error`（其它平台 hooks 无独立失败事件）                                    |
 
 > `Notification` 在 CodeBuddy/Claude 里也用于 60s 空闲提醒。为避免**已完成/空闲**会话被
 > 空闲提醒误翻成琥珀，`requiresInput` **只在会话正处于 working 时才被接受**；落在非 working
 > 会话上的 `Notification` 视为空闲提醒忽略。
+
+### 已知限制：Cursor AskQuestion / 审批不亮琥珀
+
+WorkBuddy（及 CodeBuddy / Claude）在「需用户输入」时会发 `Notification`，灯进
+`requiresInput`（琥珀快闪）。**Cursor 做不到**——这是 Cursor hooks 的平台缺口，不是
+bridge 映射遗漏：
+
+1. `hooks.json` **不承认** `Notification` / `PermissionRequest` / `Elicitation`（写入会报
+   `Unknown hook type`）。
+2. 内置 **AskQuestion** 工具**不触发** `preToolUse` / `postToolUse`（及期间其它 agent
+   hooks）；弹窗期间 daemon 收不到任何事件，灯停在上一态（通常是 working 呼吸）。
+
+Cursor 官方确认仍为 open bug（[AskQuestion does not trigger hooks](https://forum.cursor.com/t/askquestion-tool-does-not-trigger-cursor-hooks-repost/161911)，
+2026-07 仍复现）。待 Cursor 把 AskQuestion（或等价「等待用户输入」）接到 hook 后，
+再在 `mapHook` 增加对应映射即可。
 
 会话到槽位的绑定沿用 `recent` 策略：8 个对话格按最近活跃绑定，超过 8 个时挤掉最旧的
 「已读 / 空闲 / 已完成」对话。
@@ -164,8 +179,8 @@ subagent 运行期间父对话本就处于 working（Task 调用未返回），�
 ## hooks 路线的固有限制（务必知晓）
 
 - **error（红闪）状态受限**：Codex / Claude 家族 hooks 没有独立失败事件，`Stop` 无论成功
-  失败都触发，无法显示 error。Cursor 的 `stop` 带 `status`，`error` 时可红闪；审批琥珀
-  仅 Codex/Claude 家族有对应事件。
+  失败都触发，无法显示 error。Cursor 的 `stop` 带 `status`，`error` 时可红闪；审批 /
+  AskQuestion 琥珀仅 Codex/Claude 家族（含 WorkBuddy）有对应事件，Cursor 见上文「已知限制」。
 - **粒度较粗**：只有生命周期打点（会话开始 / 提交 / 工具前后 / 审批 / 结束），
   没有逐 token 的实时流。
 - **需要信任**：非托管 hook 必须先在 codex CLI 里用 `/hooks` 审查并信任（按哈希）后
@@ -218,6 +233,27 @@ pnpm --filter @planckeys/agent-bridge start
 ```bash
 pnpm --filter @planckeys/agent-bridge mock
 ```
+
+## 调试
+
+大仓（pnpm workspace）下的等价调试方式（旧写法是在 `codex-bridge/` 里
+`node dist/index.js --no-hid --log debug 2>&1 | tee bridge-debug.log`）：
+
+```bash
+cd tools
+
+# 方式 A：源码直跑，免构建（tsx），最省事。-- 之后的参数会透传给进程
+pnpm --filter @planckeys/agent-bridge dev -- --no-hid --log debug 2>&1 | tee bridge-debug.log
+
+# 方式 B：跑构建产物（先 pnpm --filter @planckeys/agent-bridge build），最贴近线上
+node agent-bridge/dist/index.js --no-hid --log debug 2>&1 | tee bridge-debug.log
+```
+
+- `--no-hid`：不打开键盘，只把每帧渲染打印到日志（也可 `--dry-run`）。
+- `--log debug`：最详细日志（含每个 hook 事件、每帧 `frame [...]`）。
+- `2>&1 | tee bridge-debug.log`：同时输出到终端并存一份到 `bridge-debug.log`（写在当前目录，
+  即 `tools/bridge-debug.log`；用完可删，属临时产物）。
+- 想连真实事件调试就去掉 `--no-hid`、接上左板；纯看渲染逻辑可再加 `--mock` 用内置模拟器造事件。
 
 ## 配置
 
@@ -318,8 +354,8 @@ agent-bridge 自己的仪表盘点阵渲染常量。
 10. **Cursor 原生 hooks**：Cursor 用 `~/.cursor/hooks.json`（扁平 `[{ command }]` + 必需的
     `version: 1`），事件名为 camelCase（`sessionStart` / `beforeSubmitPrompt` / …），
     线程键为 `conversation_id`。安装器按 `format: flat` 写入并保留文件内其它 hook；
-    无 `Notification`/`PermissionRequest`，故 Cursor 无审批闪；`stop.status === "error"`
-    时可黄闪。
+    无 `Notification`/`PermissionRequest`，且 **AskQuestion 不触发任何 hook**，故 Cursor
+    无审批/提问琥珀闪（见上文「已知限制」）；`stop.status === "error"` 时可黄闪。
 11. **平台色 + host 动画**：色相按平台（Cursor 灰白 / CodeBuddy 紫 / WorkBuddy 绿 /
     Codex 蓝）；working 软呼吸、完成高亮 5s 后 soft-unread、需输入琥珀快闪、error 黄闪。
     固件保持 Solid，避免全局 Breathing；forwarder 注入 `_planckeys_platform`。

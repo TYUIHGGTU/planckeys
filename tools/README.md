@@ -35,9 +35,13 @@ pnpm -r build             # 拓扑构建全部包（首次或改了源码后）
 | 一键全都要（推荐） | `pnpm desktop` | 启动菜单栏 App：自动拉起 agent-bridge + 托盘「打开控制台」即得灯效/改键界面 |
 | 只跑状态灯守护进程 | `pnpm bridge` | 前台运行 agent-bridge（`Ctrl+C` 退出）；需 USB 接左板 |
 | 守护进程离线自测 | `pnpm bridge:mock` | 无需真机/agent，打印每帧；有键盘则同时驱动 |
+| 调试守护进程 | `pnpm --filter @planckeys/agent-bridge dev -- --no-hid --log debug` | 免构建源码直跑 + 详细日志；详见 `agent-bridge/README.md`「调试」 |
 | 只开网页控制台（改键/控灯） | `pnpm dashboard` | 起 Vite 开发服务器 `http://localhost:5173`（Chrome/Edge 打开） |
 | 装/卸 hooks | `pnpm --filter @planckeys/agent-bridge install-hooks[:codebuddy\|:workbuddy\|:claude\|:cursor]` | 见 `agent-bridge/README.md` |
 | 整仓构建 / 检查 | `pnpm -r build` · `pnpm -r typecheck` · `pnpm -r --if-present lint` | 按依赖拓扑执行 |
+
+调试时想同时把日志存一份：在命令末尾接 `2>&1 | tee bridge-debug.log`（文件落在当前目录，
+属临时产物，可删）。
 
 单独构建某个包（会连带先构建其依赖）：
 
