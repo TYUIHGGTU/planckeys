@@ -163,7 +163,23 @@ export class ThreadStore {
     return s.status === ThreadStatus.CompleteUnread && !s.read;
   }
 
-  /** Highest-priority aggregate state across all bound slots. */
+  /**
+   * A `Working` slot counts as stale once it hasn't seen a new event for
+   * `idleOffMs`. Used ONLY to gate auto-sleep (`hasUrgent`), not rendering: a
+   * quiet-but-live conversation keeps breathing until either a new event or the
+   * whole board sleeps, instead of a single cell blinking off mid-turn. Without
+   * this gate a slot stuck at working (terminal killed / a `Stop` that never
+   * fired) would block the 3-minute auto-off forever.
+   */
+  private isStaleWorking(s: SlotState, now: number): boolean {
+    return (
+      s.status === ThreadStatus.Working &&
+      this.config.idleOffMs > 0 &&
+      now - s.updatedAt >= this.config.idleOffMs
+    );
+  }
+
+  /** Highest-priority aggregate state across all bound slots (raw status). */
   private globalState(): GlobalState {
     let hasError = false;
     let hasRequiresInput = false;
@@ -206,27 +222,39 @@ export class ThreadStore {
   }
 
   /** True if any slot is working / needs input / errored (never auto-sleeps). */
-  private hasUrgent(): boolean {
-    return this.slots.some(
-      (s) =>
-        s.threadId !== null &&
-        (s.status === ThreadStatus.Working ||
-          s.status === ThreadStatus.RequiresInput ||
-          s.status === ThreadStatus.Error),
-    );
+  private hasUrgent(now: number): boolean {
+    return this.slots.some((s) => {
+      if (s.threadId === null) return false;
+      // A stale working slot no longer blocks sleep.
+      const st = this.isStaleWorking(s, now) ? ThreadStatus.Idle : s.status;
+      return (
+        st === ThreadStatus.Working ||
+        st === ThreadStatus.RequiresInput ||
+        st === ThreadStatus.Error
+      );
+    });
   }
 
   private shouldSleep(now: number): boolean {
     if (this.config.idleOffMs <= 0) return false;
-    if (this.hasUrgent()) return false;
+    if (this.hasUrgent(now)) return false;
     return now - this.lastEventAt >= this.config.idleOffMs;
   }
 
   /** ms until the board should auto-sleep, or null if not applicable. */
   msUntilSleep(now = Date.now()): number | null {
-    if (this.config.idleOffMs <= 0 || this.hasUrgent()) return null;
+    if (this.config.idleOffMs <= 0 || this.hasUrgent(now)) return null;
     if (this.globalState() === null) return null; // already blank
     return Math.max(0, this.lastEventAt + this.config.idleOffMs - now);
+  }
+
+  /**
+   * Keep the board awake without binding a slot. Used for Cursor subagent
+   * events (which we skip for rendering) so a long subagent run does not let the
+   * parent conversation's board sleep out from under it.
+   */
+  noteActivity(now = Date.now()): void {
+    this.lastEventAt = now;
   }
 
   needsAnimation(now = Date.now()): boolean {

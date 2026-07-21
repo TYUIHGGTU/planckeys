@@ -13,6 +13,14 @@ export interface HookPayload {
   session_id?: string;
   /** Cursor stable conversation key (also present as session_id on sessionStart). */
   conversation_id?: string;
+  /** Cursor per-turn id (changes every generation; NOT a stable thread key). */
+  generation_id?: string;
+  /**
+   * Cursor transcript file path. Non-null for a real (user-facing) conversation;
+   * `null` for a subagent's own hooks. Cursor exposes no parent link, so this is
+   * the only signal that separates a subagent from the main chat.
+   */
+  transcript_path?: string | null;
   turn_id?: string;
   cwd?: string;
   source?: string;
@@ -40,6 +48,38 @@ export const resolvePlatform = (p: HookPayload): AgentPlatform => {
 };
 
 /**
+ * The stable per-conversation key for a payload.
+ *
+ * Cursor keys on `conversation_id`: its `sessionStart` (and some later events)
+ * also carry a `session_id`, so a blanket `session_id ?? conversation_id` would
+ * split one conversation across two slots — the working slot (conversation_id)
+ * would never receive its own `stop` (which arrived under session_id) and stay
+ * stuck breathing. Codex / Claude-family always carry `session_id`.
+ */
+export const threadKeyOf = (
+  p: HookPayload,
+  platform: AgentPlatform,
+): string | undefined =>
+  platform === "cursor"
+    ? p.conversation_id ?? p.session_id
+    : p.session_id ?? p.conversation_id;
+
+/**
+ * Whether this Cursor payload belongs to a subagent (Task-tool child), which
+ * runs under its own fresh `conversation_id` with no link back to the parent.
+ * Detected by an explicit null/empty `transcript_path` (present on subagent
+ * hooks, populated on the main chat). Conservative: a missing field is NOT
+ * treated as a subagent, so we never blank the main conversation by mistake.
+ */
+export const isCursorSubagent = (
+  p: HookPayload,
+  platform: AgentPlatform,
+): boolean =>
+  platform === "cursor" &&
+  "transcript_path" in p &&
+  (p.transcript_path === null || p.transcript_path === "");
+
+/**
  * Map a hook lifecycle event to a status. Thread key is `session_id` (Codex /
  * Claude-family) or `conversation_id` (Cursor).
  *
@@ -48,10 +88,10 @@ export const resolvePlatform = (p: HookPayload): AgentPlatform => {
  * `error` there.
  */
 export const mapHook = (p: HookPayload): MappedHook => {
-  const threadId = p.session_id ?? p.conversation_id;
+  const platform = resolvePlatform(p);
+  const threadId = threadKeyOf(p, platform);
   if (!threadId) return null;
   const event = p.hook_event_name;
-  const platform = resolvePlatform(p);
 
   switch (event) {
     case "SessionStart":

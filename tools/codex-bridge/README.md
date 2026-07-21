@@ -134,6 +134,27 @@ r5(行6)  15  16  27   ·    ┘
 整板（含 soft-unread 微光）**全部熄灭**省电；任何新事件立即唤醒。注意这与「完成后 5s 降亮」
 是两回事：5s 是完成态的降亮，3 分钟是整板全局待机熄屏。
 
+> **working 过期保护**：正常 working 每隔几秒就有事件刷新。若某会话卡在 working（终端被
+> 关闭 / 崩溃 / `Stop`·`stop` hook 未发出），它超过 `idleOffMs` 无新事件即**不再阻止整板熄灭**
+> ——到点整板休眠，避免顶部跑马灯 / 呼吸灯永不停止。注意：过期判据**只用于是否休眠**，
+> 不用于单格渲染；正在进行的对话即使暂时安静也保持呼吸，**不会中途单格闪断**，直到来新事件
+> 或整板因全体静默而休眠。
+>
+> **subagent 保活**：被忽略的 Cursor subagent 事件仍会刷新「最近活动时间」，因此父对话在
+> 长 subagent 运行期间不会被误判静默而熄灭。
+
+### 已知行为：Cursor subagent 各占一格
+
+Cursor 的 subagent（Task 工具拉起的子代理）以**全新的 `conversation_id`** 运行，且
+payload 里**没有任何字段指回父对话**（`session_id == conversation_id`、`parent_conversation_id`
+也等于自己——Cursor 已知缺陷）。因此「一个用户 chat 用了 subagent」会点亮多颗灯。
+
+唯一可区分的信号是 **`transcript_path`**：主对话为非空、subagent 为 `null`。默认
+（`CODEX_BRIDGE_TRACK_SUBAGENTS=false`）据此**忽略 subagent 事件**，做到「一个 chat = 一颗灯」；
+subagent 运行期间父对话本就处于 working（Task 调用未返回），灯不会灭。若想为每个 subagent
+单独点灯，设 `CODEX_BRIDGE_TRACK_SUBAGENTS=true`。判据保守：payload 不含 `transcript_path`
+字段时**不**当作 subagent，避免误灭主对话。
+
 ### 已知行为：未标记平台会话
 
 升级到平台色方案前安装的 hooks（forwarder 没带平台参数）发来的事件会被标记为
@@ -217,6 +238,7 @@ npm run mock
 | —                                              | `CODEX_BRIDGE_UNDERGLOW`          | true                                  | 底灯聚合告警开关                                                        |
 | —                                              | `CODEX_BRIDGE_UNDERGLOW_FACTOR`   | 0.35                                  | 底灯亮度系数                                                            |
 | —                                              | `CODEX_BRIDGE_HID_RECONNECT_MS`   | 2000                                  | HID 重连间隔                                                            |
+| —                                              | `CODEX_BRIDGE_TRACK_SUBAGENTS`    | false                                 | 为 Cursor subagent 单独点灯（默认关闭，见下）                          |
 
 > 升级到平台色方案后请**重新** `install-hooks <target>`，以便 forwarder 带上平台参数。
 
@@ -300,6 +322,21 @@ usage page `0xFF60`、32 字节 report、`0xA2` 每包最多 9 颗 RGB。见 `sr
     对话各一格（平台色呼吸 + 状态亮度/闪烁）、行4-6 告警区（平时熄灭，需接管/error 时整片
     波浪脉冲）。槽位从 6 扩到 8；移除了贪吃蛇 / spinner / 音柱 / 字模 / 侧条 / 任务序号等
     旧渲染（`snake.ts` / `workingEffects.ts` / `glyphs.ts` 及 `--working` 系列配置一并删除）。
+13. **working 过期保护（已修）**：`stop`/`Stop` hook 未发出（终端被关 / 崩溃）会让 working 槽
+    永久卡在呼吸并阻塞整板熄灭。改为「working 槽超过 `idleOffMs` 无新事件即视为 idle」。
+14. **按平台选线程键（已修）**：`mapHook` 原来对所有平台 `session_id ?? conversation_id`。
+    Cursor 的 `sessionStart`（及部分事件）也带 `session_id`，导致同一对话的 working 事件
+    （`conversation_id`）与 `stop` 事件被分到不同槽，working 槽收不到自己的 `stop`、永远卡在
+    呼吸——「完成 4 个 Cursor 对话后再激活一个却四格一起呼吸」即由此而来。改为 Cursor 一律
+    优先 `conversation_id`，其它家族保持 `session_id`；`--log debug` 会打印三个 id 便于核对。
+15. **忽略 Cursor subagent（默认）**：实测发现「1 个对话却亮 2 颗灯」是因为 agent 起了
+    subagent——每个 subagent 用独立 `conversation_id` 且无父链接（Cursor 已知缺陷）。按
+    `transcript_path` 是否为空区分主对话/子代理，默认忽略 subagent 事件（`CODEX_BRIDGE_TRACK_SUBAGENTS`
+    可开）。`--log debug` 额外打印完整 payload，便于核对字段。
+16. **过期只管休眠、subagent 保活（已修）**：第 13 条把过期 working 直接当 idle 用于渲染，导致
+    「对话还在进行、某格却灭了又亮」——尤其父对话把活儿交给（被忽略的）subagent 时父对话长时间
+    无事件。改为：过期判据**只用于是否允许整板休眠**，单格渲染只看原始状态，进行中的对话保持
+    呼吸不中途闪断；被忽略的 subagent 事件通过 `keepAlive` 刷新活动时间，避免父对话被误灭。
 
 ## 目录结构
 

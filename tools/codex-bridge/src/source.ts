@@ -19,6 +19,8 @@ export interface CodexSource {
 
 export interface CodexSourceEventMap {
   status: (e: StatusEvent) => void;
+  /** Activity that should keep the board awake without binding a slot. */
+  keepAlive: () => void;
   open: () => void;
   close: () => void;
 }

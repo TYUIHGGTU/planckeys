@@ -41,6 +41,12 @@ export interface BridgeConfig {
   hidReconnectMs: number;
   /** Slot binding strategy. */
   binding: "recent" | "fixed";
+  /**
+   * Give Cursor subagents (Task-tool children) their own LED. Off by default:
+   * subagents run under a fresh conversation_id with no parent link, so tracking
+   * them lights an extra lamp per subagent. Detected via null `transcript_path`.
+   */
+  trackSubagents: boolean;
   /** Never open the HID device; only log rendered frames (for debugging). */
   dryRun: boolean;
   logLevel: LogLevel;
@@ -98,6 +104,7 @@ export const loadConfig = (argv: string[]): BridgeConfig => {
     hidReconnectMs: num(env.CODEX_BRIDGE_HID_RECONNECT_MS, 2000),
     binding:
       (getFlagValue("--binding") as "recent" | "fixed" | undefined) ?? "recent",
+    trackSubagents: bool(env.CODEX_BRIDGE_TRACK_SUBAGENTS, false),
     dryRun: flags.has("--no-hid") || flags.has("--dry-run"),
     logLevel,
   };

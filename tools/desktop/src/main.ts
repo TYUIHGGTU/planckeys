@@ -1,0 +1,43 @@
+import { app } from "electron";
+import { bridge } from "./bridge";
+import { controlWindow_openIfRequested } from "./controlWindow";
+import { logStore } from "./logStore";
+import { loadSettings } from "./settings";
+import { syncLoginItem } from "./autolaunch";
+import { createTray } from "./tray";
+
+// 菜单栏常驻应用：只允许单实例，避免多份 daemon 抢同一块 HID。
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    logStore.append("[desktop] 检测到第二个实例启动请求，已忽略（保持单实例）。");
+  });
+
+  app.whenReady().then(() => {
+    // 纯托盘应用：隐藏 Dock 图标，不在程序坞占位。
+    if (process.platform === "darwin") app.dock?.hide();
+
+    const settings = loadSettings();
+    syncLoginItem(settings.autoLaunch);
+    createTray();
+
+    logStore.append("[desktop] Planckeys Desktop 已启动。");
+    controlWindow_openIfRequested();
+    if (settings.autoStartBridge) {
+      void bridge.start();
+    } else {
+      logStore.append("[desktop] 已关闭“登录后自动启动 Bridge”，请从菜单手动启动。");
+    }
+  });
+
+  // 托盘应用：没有窗口也要保持运行。
+  app.on("window-all-closed", () => {
+    /* keep running */
+  });
+
+  app.on("before-quit", () => {
+    bridge.stop();
+  });
+}

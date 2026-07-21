@@ -60,7 +60,7 @@ const main = (): void => {
   const source: CodexSource =
     config.source === "mock"
       ? new MockSource()
-      : new HooksSource(config.socketPath);
+      : new HooksSource(config.socketPath, config.trackSubagents);
 
   let animTimer: NodeJS.Timeout | null = null;
   let sleepTimer: NodeJS.Timeout | null = null;
@@ -136,6 +136,13 @@ const main = (): void => {
       sleepTimer = null;
     }
     hid.fill({ r: 0, g: 0, b: 0 });
+  });
+
+  // Subagent (or other non-slot) activity: keep the board awake, reschedule the
+  // auto-off deadline, but don't change any lamp.
+  source.events.on("keepAlive", () => {
+    store.noteActivity();
+    scheduleSleep();
   });
 
   source.events.on("status", (e) => {

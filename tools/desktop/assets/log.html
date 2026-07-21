@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Planckeys Bridge 日志</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #14161c;
+        color: #d7dbe4;
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        background: #1b1e27;
+        border-bottom: 1px solid #2a2e3a;
+        font-size: 12px;
+      }
+      header .title {
+        font-weight: 600;
+        color: #eef1f7;
+      }
+      header .spacer {
+        flex: 1;
+      }
+      button,
+      label {
+        font: inherit;
+        color: #cfd4de;
+      }
+      button {
+        background: #2a2e3a;
+        border: 1px solid #3a3f4c;
+        border-radius: 6px;
+        padding: 4px 10px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #333846;
+      }
+      label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        user-select: none;
+      }
+      #log {
+        flex: 1;
+        overflow: auto;
+        padding: 8px 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .line {
+        padding: 1px 0;
+      }
+      .line.warn {
+        color: #ffcc66;
+      }
+      .line.err {
+        color: #ff7a7a;
+      }
+      .line.desktop {
+        color: #7fd1ff;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="title">Planckeys Bridge 日志</span>
+      <span class="spacer"></span>
+      <label><input type="checkbox" id="autoscroll" checked /> 自动滚动</label>
+      <button id="clear">清屏</button>
+    </header>
+    <div id="log"></div>
+    <script>
+      const logEl = document.getElementById("log");
+      const autoscrollEl = document.getElementById("autoscroll");
+      document.getElementById("clear").addEventListener("click", () => {
+        logEl.textContent = "";
+      });
+
+      const classify = (line) => {
+        const low = line.toLowerCase();
+        if (low.includes("[desktop]") || low.includes("[build]")) return "desktop";
+        if (low.includes(" error") || low.includes("失败") || low.includes("err")) return "err";
+        if (low.includes("warn") || low.includes("releasing")) return "warn";
+        return "";
+      };
+
+      const append = (line) => {
+        const div = document.createElement("div");
+        div.className = "line " + classify(line);
+        div.textContent = line;
+        logEl.appendChild(div);
+        if (autoscrollEl.checked) logEl.scrollTop = logEl.scrollHeight;
+      };
+
+      if (window.planckeys) {
+        window.planckeys.onInit((lines) => {
+          logEl.textContent = "";
+          lines.forEach(append);
+        });
+        window.planckeys.onLine(append);
+      }
+    </script>
+  </body>
+</html>

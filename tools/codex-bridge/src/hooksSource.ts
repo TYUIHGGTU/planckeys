@@ -2,7 +2,13 @@ import net from "node:net";
 import { existsSync, unlinkSync } from "node:fs";
 import { log } from "./logger.js";
 import { CodexSource, CodexSourceEmitter } from "./source.js";
-import { HookPayload, mapHook } from "./hookEvents.js";
+import {
+  HookPayload,
+  isCursorSubagent,
+  mapHook,
+  PLATFORM_FIELD,
+  resolvePlatform,
+} from "./hookEvents.js";
 
 /**
  * Global source: listens on a Unix domain socket that per-event hook forwarder
@@ -15,7 +21,10 @@ export class HooksSource implements CodexSource {
   readonly events = new CodexSourceEmitter();
   private server: net.Server | null = null;
 
-  constructor(private readonly socketPath: string) {}
+  constructor(
+    private readonly socketPath: string,
+    private readonly trackSubagents = false,
+  ) {}
 
   start(): void {
     // Clean up a stale socket file from a previous run.
@@ -62,10 +71,31 @@ export class HooksSource implements CodexSource {
       return;
     }
     log.debug(
-      `hook ${payload.hook_event_name ?? "?"} session=${payload.session_id ?? payload.conversation_id ?? "?"}`,
+      `hook ${payload.hook_event_name ?? "?"} platform=${payload[PLATFORM_FIELD] ?? "?"} ` +
+        `session_id=${payload.session_id ?? "-"} conversation_id=${payload.conversation_id ?? "-"} ` +
+        `generation_id=${payload.generation_id ?? "-"}`,
     );
+    // Full payload (keys + values) so we can see any parent/subagent linkage
+    // fields the bridge does not model yet.
+    log.debug(`  raw=${text.slice(0, 800)}`);
+
+    // Cursor subagents run under their own conversation_id with no parent link;
+    // skip them unless explicitly tracked, so one user chat = one lamp.
+    if (!this.trackSubagents && isCursorSubagent(payload, resolvePlatform(payload))) {
+      log.debug(
+        `  -> skipped subagent (transcript_path=${payload.transcript_path ?? "null"})`,
+      );
+      // Still count it as activity so the parent conversation's board does not
+      // sleep out during a long subagent run.
+      this.events.emit("keepAlive");
+      return;
+    }
+
     const mapped = mapHook(payload);
     if (mapped) {
+      log.debug(
+        `  -> thread=${mapped.threadId} status=${mapped.status} platform=${mapped.platform}`,
+      );
       this.events.emit("status", {
         threadId: mapped.threadId,
         status: mapped.status,
