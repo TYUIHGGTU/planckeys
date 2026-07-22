@@ -19,56 +19,81 @@ let tray: Tray | null = null;
 
 const BRIGHTNESS_STEPS = [64, 96, 128, 160, 200, 255];
 
-/** 画一个 3×2 圆点阵作为菜单栏模板图标（黑色 + alpha，随明暗自适应）。 */
-const dotBitmap = (size: number): Buffer => {
+type Point = readonly [number, number];
+
+const distanceToSegment = (x: number, y: number, a: Point, b: Point): number => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const lengthSquared = dx * dx + dy * dy;
+  const t =
+    lengthSquared === 0
+      ? 0
+      : Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / lengthSquared));
+  return Math.hypot(x - (a[0] + t * dx), y - (a[1] + t * dy));
+};
+
+/**
+ * Planckeys 的菜单栏符号：把 Dock 图标里的双端连接路径压缩成模板图。
+ * 以 4×4 子像素采样抗锯齿，保证 16px 和 Retina 下都保持清晰。
+ */
+const bridgeBitmap = (size: number): Buffer => {
   const buf = Buffer.alloc(size * size * 4); // BGRA
-  const cols = 3;
-  const rows = 2;
-  const radius = size * 0.12;
-  const marginX = size * 0.22;
-  const marginY = size * 0.28;
-  const spanX = size - marginX * 2;
-  const spanY = size - marginY * 2;
-  const centers: Array<[number, number]> = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cx = marginX + (spanX * c) / (cols - 1);
-      const cy = marginY + (spanY * r) / (rows - 1);
-      centers.push([cx, cy]);
-    }
-  }
+  const scale = size / 18;
+  const path: Point[] = [
+    [3.7, 5.2],
+    [12.1, 5.2],
+    [13.8, 6.9],
+    [13.8, 11.1],
+    [12.1, 12.8],
+    [4.2, 12.8],
+  ].map(([x, y]) => [x * scale, y * scale] as const);
+  const endpoints: Point[] = [path[0], path[4]];
+  const strokeRadius = 0.85 * scale;
+  const ringOuterRadius = 2.15 * scale;
+  const ringInnerRadius = 0.82 * scale;
+  const samples = 4;
+
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      let on = false;
-      for (const [cx, cy] of centers) {
-        const dx = x + 0.5 - cx;
-        const dy = y + 0.5 - cy;
-        if (dx * dx + dy * dy <= radius * radius) {
-          on = true;
-          break;
+      let covered = 0;
+      for (let sy = 0; sy < samples; sy++) {
+        for (let sx = 0; sx < samples; sx++) {
+          const px = x + (sx + 0.5) / samples;
+          const py = y + (sy + 0.5) / samples;
+          const onPath = path
+            .slice(0, -1)
+            .some((point, i) => distanceToSegment(px, py, point, path[i + 1]) <= strokeRadius);
+          const onRing = endpoints.some(([cx, cy]) => {
+            const distance = Math.hypot(px - cx, py - cy);
+            return distance <= ringOuterRadius && distance >= ringInnerRadius;
+          });
+          const inRingHole = endpoints.some(
+            ([cx, cy]) => Math.hypot(px - cx, py - cy) < ringInnerRadius,
+          );
+          if ((onPath || onRing) && !inRingHole) covered++;
         }
       }
       const i = (y * size + x) * 4;
       buf[i] = 0;
       buf[i + 1] = 0;
       buf[i + 2] = 0;
-      buf[i + 3] = on ? 255 : 0;
+      buf[i + 3] = Math.round((covered / (samples * samples)) * 255);
     }
   }
   return buf;
 };
 
 const trayImage = (): NativeImage => {
-  const img = nativeImage.createFromBitmap(dotBitmap(16), {
-    width: 16,
-    height: 16,
+  const img = nativeImage.createFromBitmap(bridgeBitmap(18), {
+    width: 18,
+    height: 18,
   });
   try {
     img.addRepresentation({
       scaleFactor: 2,
-      width: 32,
-      height: 32,
-      buffer: dotBitmap(32),
+      width: 36,
+      height: 36,
+      buffer: bridgeBitmap(36),
     });
   } catch {
     /* addRepresentation 在个别平台可能不可用，退化为 1x */

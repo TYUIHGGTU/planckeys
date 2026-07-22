@@ -23,6 +23,11 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
+    // 开发模式下 Electron 不会读取打包图标，显式替换默认的 Electron Dock 图标。
+    if (process.platform === "darwin" && app.dock) {
+      app.dock.setIcon(join(__dirname, "..", "assets", "icon.png"));
+    }
+
     const settings = loadSettings();
     syncLoginItem(settings.autoLaunch);
     createTray();
