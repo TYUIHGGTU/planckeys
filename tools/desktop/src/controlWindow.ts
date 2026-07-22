@@ -1,7 +1,8 @@
 import {
-  app,
   BrowserWindow,
+  dialog,
   Notification,
+  type SerialPort,
   type Session,
 } from "electron";
 import { spawn, type ChildProcess } from "node:child_process";
@@ -21,12 +22,27 @@ const dashboardDir = (): string =>
 
 const dashboardIndex = (): string => join(dashboardDir(), "dist", "index.html");
 
+/** 为串口条目生成人类可读标签（Electron 的串口列表带 serialNumber，可区分同型号多台）。 */
+const serialPortLabel = (port: SerialPort, index: number): string => {
+  const base =
+    port.displayName ||
+    port.portName ||
+    [port.vendorId, port.productId].filter(Boolean).join(":") ||
+    `串口设备 ${index + 1}`;
+  return port.serialNumber ? `${base}（${port.serialNumber}）` : base;
+};
+
+/** 是否为 ZMK 键盘（按 USB VID 判断）。 */
+const isZmkPort = (port: SerialPort): boolean =>
+  ZMK_VENDOR_IDS.includes((port.vendorId ?? "").toLowerCase());
+
 /**
- * 放行渲染层的 WebHID（控灯）与 Web Serial（改键）。Electron 默认会弹出原生设备
- * 选择器并要求我们回调选中项。
+ * 放行渲染层的 WebHID（控灯）与 Web Serial（改键）。Electron 不会弹原生选择器，
+ * 需由我们回调选中项。
  *
  * - HID：优先 PlanckKeys（有 LED profile）；否则取列表第一项。
- * - Serial：优先常见 ZMK VID，否则取第一项——以便改键任意 Studio 键盘。
+ * - Serial：只有 1 个 ZMK 键盘时直接连、不弹窗（忽略蓝牙口/耳机等非键盘串口）；
+ *   有多个 ZMK 键盘时才弹对话框让用户选；一个 ZMK 都识别不到时，退回列出全部设备。
  */
 const wirePermissions = (ses: Session): void => {
   if (permsWired.has(ses)) return;
@@ -48,15 +64,67 @@ const wirePermissions = (ses: Session): void => {
 
   ses.on("select-serial-port", (event, portList, _wc, callback) => {
     event.preventDefault();
-    // 优先 ZMK；若无匹配则仍选第一项，支持其它已启用 Studio 的键盘改键。
-    const pick =
-      portList.find((p) =>
-        ZMK_VENDOR_IDS.includes((p.vendorId ?? "").toLowerCase()),
-      ) ?? portList[0];
-    logStore.append(
-      `[desktop] 控制台选择串口：${pick?.portName ?? pick?.portId ?? "无可用串口"}`,
-    );
-    callback(pick?.portId ?? "");
+
+    if (portList.length === 0) {
+      logStore.append("[desktop] 控制台请求串口：无可用设备");
+      callback("");
+      return;
+    }
+
+    const zmkPorts = portList.filter(isZmkPort);
+
+    // 恰好一个 ZMK 键盘：直接连，不打扰用户（哪怕还有蓝牙口等其它串口）。
+    if (zmkPorts.length === 1) {
+      const only = zmkPorts[0];
+      logStore.append(
+        `[desktop] 控制台选择串口（唯一 ZMK 键盘）：${serialPortLabel(only, 0)}`,
+      );
+      callback(only.portId ?? "");
+      return;
+    }
+
+    // 有多个 ZMK 键盘 → 只在它们之间选；一个都识别不到 → 退回列出全部。
+    const candidates = zmkPorts.length > 1 ? zmkPorts : portList;
+
+    // 非全 ZMK 场景下，把 ZMK 设备排前面作为推荐。
+    const ordered = [...candidates].sort((a, b) => {
+      const az = isZmkPort(a);
+      const bz = isZmkPort(b);
+      return az === bz ? 0 : az ? -1 : 1;
+    });
+    const labels = ordered.map((port, index) => serialPortLabel(port, index));
+    const options = {
+      type: "question" as const,
+      title: "选择要连接的键盘",
+      message: "检测到多个串口设备",
+      detail: "请选择本次要连接的键盘：",
+      buttons: [...labels, "取消"],
+      cancelId: labels.length,
+      defaultId: 0,
+      noLink: true,
+    };
+    const prompt = win
+      ? dialog.showMessageBox(win, options)
+      : dialog.showMessageBox(options);
+    void prompt
+      .then(({ response }) => {
+        if (response < 0 || response >= ordered.length) {
+          logStore.append("[desktop] 控制台已取消串口选择");
+          callback("");
+          return;
+        }
+        const chosen = ordered[response];
+        logStore.append(
+          `[desktop] 控制台选择串口：${serialPortLabel(chosen, response)}`,
+        );
+        callback(chosen.portId ?? "");
+      })
+      .catch((error: unknown) => {
+        logStore.append(
+          `[desktop] 串口选择对话框出错：${(error as Error).message}`,
+        );
+        callback("");
+      });
   });
 };
 
@@ -129,6 +197,7 @@ export const openControlWindow = (): void => {
     return;
   }
 
+  const isMac = process.platform === "darwin";
   win = new BrowserWindow({
     width: 1200,
     height: 820,
@@ -136,6 +205,14 @@ export const openControlWindow = (): void => {
     minHeight: 600,
     title: "Planckeys 控制台（灯效 / 改键）",
     backgroundColor: "#14161c",
+    // macOS 原生观感：隐藏系统标题栏，把红黄绿交通灯内嵌到应用顶栏里，
+    // 竖直居中到 56px 顶栏内（渲染层把顶栏设为可拖拽区域）。
+    ...(isMac
+      ? {
+          titleBarStyle: "hiddenInset" as const,
+          trafficLightPosition: { x: 18, y: 20 },
+        }
+      : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -151,14 +228,10 @@ export const openControlWindow = (): void => {
     logStore.append(`[desktop] 控制台加载失败（${code} ${desc}）：${url}`),
   );
 
-  // 有可见窗口时，让 Dock 图标出现，方便切换（关闭后回到纯托盘）。
-  if (process.platform === "darwin") void app.dock?.show();
-
   void loadDashboard(win);
 
   win.on("closed", () => {
     win = null;
-    if (process.platform === "darwin") app.dock?.hide();
   });
 };
 

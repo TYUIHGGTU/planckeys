@@ -1,5 +1,6 @@
 import { Group, SegmentedControl, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { isSelectionCancelled } from "../device/studio/connection";
 import { ConnectBar } from "../shared/components/ConnectBar";
 import type { LedController } from "../shared/hooks/useLedDevice";
 import type { StudioController } from "../shared/hooks/useStudioDevice";
@@ -44,7 +45,10 @@ export function TopBar({ led, studio, theme }: Props) {
           message: "键位编辑就绪；有灯效 profile 时显示灯光面板",
         }),
       )
-      .catch((error) => notifyError("Studio 连接失败", error));
+      .catch((error) => {
+        if (isSelectionCancelled(error)) return; // 用户取消选择，不提示
+        notifyError("Studio 连接失败", error);
+      });
   };
 
   return (

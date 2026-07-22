@@ -59,6 +59,23 @@ body {
   gap: 22px;
   border-bottom: 1px solid var(--mantine-color-default-border);
   background: var(--ws-surface);
+  /* Electron 下顶栏充当窗口标题栏：整体可拖拽，交互控件单独放行。 */
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.ws-topbar button,
+.ws-topbar a,
+.ws-topbar input,
+.ws-topbar label,
+.ws-topbar .mantine-SegmentedControl-root {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* 桌面端隐藏了系统标题栏，为内嵌的 macOS 交通灯预留左侧空间。 */
+.is-electron .ws-topbar {
+  padding-left: 84px;
 }
 
 .ws-brand {

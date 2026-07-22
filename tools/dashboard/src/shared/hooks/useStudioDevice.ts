@@ -5,6 +5,7 @@ import {
   type KeyboardProfile,
 } from "@planckeys/keyboard-profile";
 import {
+  isSelectionCancelled,
   openStudioConnection,
   type StudioConnection,
 } from "../../device/studio/connection";
@@ -48,7 +49,8 @@ export interface StudioController {
   syncState: StudioSyncState;
   syncError: string | null;
 
-  connect: () => Promise<void>;
+  /** 连接键盘：弹出选择器（浏览器原生 / 桌面端对话框）让用户选设备。 */
+  connect: (port?: SerialPort) => Promise<void>;
   disconnect: () => Promise<void>;
   selectLayer: (index: number) => void;
   selectPhysicalLayout: (index: number) => Promise<void>;
@@ -158,11 +160,11 @@ export const useStudioDevice = (): StudioController => {
     }, AUTO_SAVE_DELAY_MS);
   }, [clearSaveTimer, enqueue, performSave]);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (port?: SerialPort) => {
     setLoading(true);
     setSyncError(null);
     try {
-      const connection = await openStudioConnection();
+      const connection = await openStudioConnection(port);
       connRef.current = connection;
       const info = await getDeviceInfo(connection.conn);
       const name = info?.name ?? "ZMK";
@@ -195,10 +197,15 @@ export const useStudioDevice = (): StudioController => {
         `Studio 载入: ${nextKeymap?.layers.length ?? 0} 层 / ${nextBehaviors.length} behaviors / ${physicalLayouts?.layouts.length ?? 0} layouts`,
       );
     } catch (error) {
-      const message = (error as Error).message || String(error);
-      pushLog("Studio 连接失败: " + message);
       connRef.current = null;
       setConnected(false);
+      if (isSelectionCancelled(error)) {
+        // 用户取消选择设备：不是失败，保持原状态、静默返回。
+        pushLog("已取消选择设备");
+        throw error;
+      }
+      const message = (error as Error).message || String(error);
+      pushLog("Studio 连接失败: " + message);
       setSyncState("error");
       setSyncError(message);
       throw error;

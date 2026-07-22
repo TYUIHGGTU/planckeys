@@ -4,3 +4,4 @@ schemas/
 *.log
 .DS_Store
 **/.DS_Store
+.pnpm-store/

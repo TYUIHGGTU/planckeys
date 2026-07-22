@@ -1,7 +1,7 @@
 import { app } from "electron";
 import { join } from "node:path";
 import { bridge } from "./bridge";
-import { controlWindow_openIfRequested } from "./controlWindow";
+import { controlWindow_openIfRequested, openControlWindow } from "./controlWindow";
 import { logStore } from "./logStore";
 import { loadSettings } from "./settings";
 import { syncLoginItem } from "./autolaunch";
@@ -23,9 +23,6 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
-    // 纯托盘应用：隐藏 Dock 图标，不在程序坞占位。
-    if (process.platform === "darwin") app.dock?.hide();
-
     const settings = loadSettings();
     syncLoginItem(settings.autoLaunch);
     createTray();
@@ -37,6 +34,11 @@ if (!gotLock) {
     } else {
       logStore.append("[desktop] 已关闭“登录后自动启动 Bridge”，请从菜单手动启动。");
     }
+  });
+
+  // 点击 Dock 图标（或无窗口时被激活）→ 打开/聚焦控制台主面板。
+  app.on("activate", () => {
+    openControlWindow();
   });
 
   // 托盘应用：没有窗口也要保持运行。
