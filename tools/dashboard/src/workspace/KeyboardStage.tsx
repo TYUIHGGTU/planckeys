@@ -5,6 +5,7 @@ import {
   Card,
   Group,
   Popover,
+  Select,
   Stack,
   Text,
   Title,
@@ -78,17 +79,37 @@ export function KeyboardStage({
     selectedKey !== null ? layer?.bindings[selectedKey] : undefined;
   const scale = useKeyboardScale(layout);
   const showKeyboard = studio.connected && layout && layer;
+  const layoutOptions =
+    layouts?.layouts.map((item, index) => ({
+      value: String(index),
+      label: item.name || `布局 ${index + 1}`,
+    })) ?? [];
 
   return (
     <section className="keyboard-stage">
       <Group justify="space-between" align="flex-end" wrap="nowrap">
         <div>
           <Text size="xs" c="dimmed">
-            {studio.deviceName ?? "PlanckKeys L"}
+            {studio.deviceName ?? "未连接设备"}
           </Text>
           <Title order={1}>{layerTitle(layer?.name, studio.selectedLayer)}</Title>
         </div>
-        <SyncBadge studio={studio} />
+        <Group gap="xs" wrap="nowrap">
+          {layoutOptions.length > 1 && (
+            <Select
+              size="xs"
+              w={160}
+              allowDeselect={false}
+              data={layoutOptions}
+              value={String(layouts?.activeLayoutIndex ?? 0)}
+              onChange={(value) => {
+                if (value !== null) void studio.selectPhysicalLayout(Number(value));
+              }}
+              aria-label="物理布局"
+            />
+          )}
+          <SyncBadge studio={studio} />
+        </Group>
       </Group>
 
       <div className="keyboard-center" ref={scale.containerRef}>

@@ -1,75 +1,51 @@
 /**
  * agent-bridge 的协议入口。
  *
- * 「线材协议 + 板载布局 + 报文打包」核心已抽到单一真源包 `@planckeys/led-protocol`，
- * 这里全部再导出；下面只保留 agent-bridge 自己的「会话点阵渲染」解读常量
- * （dashboard 有各自的一份，如 AXIS_INDICES）。
+ * 线材协议来自 `@planckeys/led-protocol`；板载几何与会话分区来自
+ * `@planckeys/keyboard-profile`（默认 planckeys-left）。
  */
 export * from "@planckeys/led-protocol";
 
 import {
-  AXIS_LAYOUT,
-  LED_COUNT,
-  UNDERGLOW_INDICES,
-  clampByte,
-  type Rgb,
-} from "@planckeys/led-protocol";
+  DEFAULT_PROFILE,
+  type KeyboardProfile,
+  type MatrixCell,
+} from "@planckeys/keyboard-profile";
+import { clampByte, type Rgb } from "@planckeys/led-protocol";
+
+/** 当前桥接使用的 profile（本期固定为默认；后续可按设备匹配切换）。 */
+export const ACTIVE_PROFILE: KeyboardProfile = DEFAULT_PROFILE;
+
+const { axisLayout, agentZones } = ACTIVE_PROFILE;
 
 /**
- * All front-visible axis LEDs (chain index 6..27). Underglow 0..5 is hidden and
- * handled separately. Used to blank the canvas before each frame.
+ * All front-visible axis LEDs. Underglow is hidden and handled separately.
+ * Used to blank the canvas before each frame.
  */
-export const VISIBLE_LED_INDICES: readonly number[] = Array.from(
-  { length: LED_COUNT - UNDERGLOW_INDICES.length },
-  (_, i) => i + UNDERGLOW_INDICES.length,
-);
+export const VISIBLE_LED_INDICES: readonly number[] = ACTIVE_PROFILE.axisIndices;
 
-export const MATRIX_ROWS = AXIS_LAYOUT.length; // 6
-export const MATRIX_COLS = AXIS_LAYOUT[0].length; // 4
+export const MATRIX_ROWS = axisLayout.length;
+export const MATRIX_COLS = axisLayout[0]?.length ?? 0;
 
 /** Map a matrix cell to its chain index, or null if empty / out of range. */
 export const cellIndex = (row: number, col: number): number | null => {
   if (row < 0 || row >= MATRIX_ROWS || col < 0 || col >= MATRIX_COLS) {
     return null;
   }
-  return AXIS_LAYOUT[row][col];
+  return axisLayout[row][col];
 };
 
-/** Chain indices for one matrix row, left-to-right, skipping empty cells. */
-const rowCells = (row: number): number[] =>
-  AXIS_LAYOUT[row].filter((x): x is number => x !== null);
+export const GLOBAL_ROW_INDICES: readonly number[] = agentZones.globalRowIndices;
 
-/**
- * Dashboard zones. The board is read as a portrait 4-col × 6-row grid:
- *
- *   r0            -> global status bar (aggregate of all conversations)
- *   r1, r2        -> up to 8 per-conversation cells (left-to-right, r1 then r2)
- *   r3, r4, r5    -> attention alert region (off unless input needed / errored)
- */
-export const GLOBAL_ROW_INDICES: readonly number[] = rowCells(0);
+export const CONVO_INDICES: readonly number[] = agentZones.convoIndices;
 
-export const CONVO_INDICES: readonly number[] = [...rowCells(1), ...rowCells(2)];
+/** Number of per-conversation cells. */
+export const CONVO_SLOT_COUNT = CONVO_INDICES.length;
 
-/** Number of per-conversation cells (rows 1-2). */
-export const CONVO_SLOT_COUNT = CONVO_INDICES.length; // 8
+export type { MatrixCell };
 
-export interface MatrixCell {
-  index: number;
-  row: number;
-  col: number;
-}
-
-/** Alert-region cells (rows 3-5) with their grid position (for the wave phase). */
-export const ALERT_CELLS: readonly MatrixCell[] = (() => {
-  const out: MatrixCell[] = [];
-  for (let row = 3; row < MATRIX_ROWS; row++) {
-    for (let col = 0; col < MATRIX_COLS; col++) {
-      const index = AXIS_LAYOUT[row][col];
-      if (index !== null) out.push({ index, row, col });
-    }
-  }
-  return out;
-})();
+/** Alert-region cells with their grid position (for the wave phase). */
+export const ALERT_CELLS: readonly MatrixCell[] = agentZones.alertCells;
 
 export const rgb = (r: number, g: number, b: number): Rgb => ({
   r: clampByte(r),

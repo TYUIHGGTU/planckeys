@@ -38,7 +38,9 @@ export function Workspace({ led, studio, theme, hint }: Props) {
           </Alert>
         )}
         <main
-          className="workspace"
+          className={
+            "workspace" + (studio.supportsLighting ? "" : " no-lighting")
+          }
           style={
             { "--candidate-height": `${candidateSize.height}px` } as CSSProperties
           }
@@ -69,7 +71,13 @@ export function Workspace({ led, studio, theme, hint }: Props) {
             }}
             size={candidateSize}
           />
-          <LightingPanel led={led} selectedKey={selectedKey} />
+          {studio.supportsLighting && studio.keyboardProfile && (
+            <LightingPanel
+              led={led}
+              profile={studio.keyboardProfile}
+              selectedKey={selectedKey}
+            />
+          )}
         </main>
       </div>
     </div>

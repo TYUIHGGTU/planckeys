@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  DEFAULT_PROFILE,
+  resolveProfile,
+  type KeyboardProfile,
+} from "@planckeys/keyboard-profile";
+import {
   openStudioConnection,
   type StudioConnection,
 } from "../../device/studio/connection";
@@ -10,6 +15,7 @@ import {
   getPhysicalLayouts,
   listBehaviors,
   saveChanges,
+  setActivePhysicalLayout,
   setLayerBinding,
   type BehaviorSummary,
   type Binding,
@@ -30,6 +36,10 @@ export interface StudioController {
   connected: boolean;
   loading: boolean;
   deviceName: string | null;
+  /** 当前灯效 profile；Studio 未连时为 DEFAULT；连上无匹配则为 null。 */
+  keyboardProfile: KeyboardProfile | null;
+  /** 是否展示灯效面板 / 允许 HID 控灯。 */
+  supportsLighting: boolean;
   keymap: KeymapData | null;
   layouts: PhysicalLayoutsData | null;
   behaviors: BehaviorSummary[];
@@ -41,12 +51,29 @@ export interface StudioController {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   selectLayer: (index: number) => void;
+  selectPhysicalLayout: (index: number) => Promise<void>;
   applyBinding: (keyPosition: number, binding: Binding) => Promise<void>;
   save: () => Promise<void>;
   discard: () => Promise<void>;
 }
 
 const AUTO_SAVE_DELAY_MS = 500;
+
+const warnIfLayoutMismatch = (
+  profile: KeyboardProfile | null,
+  layouts: PhysicalLayoutsData | null,
+): void => {
+  if (!profile || !layouts) return;
+  const active =
+    layouts.layouts[layouts.activeLayoutIndex] ?? layouts.layouts[0];
+  const keyCount = active?.keys.length ?? 0;
+  const mapCount = profile.keyPositionToLedIndex.length;
+  if (keyCount !== mapCount) {
+    pushLog(
+      `警告: Studio 布局键数 ${keyCount} 与 profile「${profile.id}」键灯映射 ${mapCount} 不一致`,
+    );
+  }
+};
 
 export const useStudioDevice = (): StudioController => {
   const connRef = useRef<StudioConnection | null>(null);
@@ -59,8 +86,16 @@ export const useStudioDevice = (): StudioController => {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deviceName, setDeviceName] = useState<string | null>(null);
+  const [keyboardProfile, setKeyboardProfile] = useState<KeyboardProfile | null>(
+    DEFAULT_PROFILE,
+  );
   const [keymap, setKeymapState] = useState<KeymapData | null>(null);
-  const [layouts, setLayouts] = useState<PhysicalLayoutsData | null>(null);
+  const [layouts, setLayoutsState] = useState<PhysicalLayoutsData | null>(null);
+  const layoutsRef = useRef<PhysicalLayoutsData | null>(null);
+  const setLayouts = useCallback((next: PhysicalLayoutsData | null) => {
+    layoutsRef.current = next;
+    setLayoutsState(next);
+  }, []);
   const [behaviors, setBehaviors] = useState<BehaviorSummary[]>([]);
   const [selectedLayer, setSelectedLayer] = useState(0);
   const [unsaved, setUnsavedState] = useState(false);
@@ -130,8 +165,17 @@ export const useStudioDevice = (): StudioController => {
       const connection = await openStudioConnection();
       connRef.current = connection;
       const info = await getDeviceInfo(connection.conn);
-      setDeviceName(info?.name ?? "ZMK");
-      pushLog("Studio 已连接: " + (info?.name ?? "?"));
+      const name = info?.name ?? "ZMK";
+      setDeviceName(name);
+      pushLog("Studio 已连接: " + name);
+
+      const profile = resolveProfile({ name });
+      setKeyboardProfile(profile);
+      if (profile) {
+        pushLog(`已匹配灯效 profile: ${profile.id}`);
+      } else {
+        pushLog("未匹配灯效 profile，仅启用改键");
+      }
 
       const [nextKeymap, physicalLayouts, nextBehaviors] = await Promise.all([
         getKeymap(connection.conn),
@@ -141,13 +185,14 @@ export const useStudioDevice = (): StudioController => {
       setKeymap(nextKeymap);
       setLayouts(physicalLayouts);
       setBehaviors(nextBehaviors);
+      warnIfLayoutMismatch(profile, physicalLayouts);
       selectedLayerRef.current = 0;
       setSelectedLayer(0);
       setUnsaved(false);
       setSyncState("saved");
       setConnected(true);
       pushLog(
-        `Studio 载入: ${nextKeymap?.layers.length ?? 0} 层 / ${nextBehaviors.length} behaviors`,
+        `Studio 载入: ${nextKeymap?.layers.length ?? 0} 层 / ${nextBehaviors.length} behaviors / ${physicalLayouts?.layouts.length ?? 0} layouts`,
       );
     } catch (error) {
       const message = (error as Error).message || String(error);
@@ -172,6 +217,7 @@ export const useStudioDevice = (): StudioController => {
     connRef.current = null;
     setConnected(false);
     setDeviceName(null);
+    setKeyboardProfile(DEFAULT_PROFILE);
     setKeymap(null);
     setLayouts(null);
     setBehaviors([]);
@@ -185,6 +231,46 @@ export const useStudioDevice = (): StudioController => {
     selectedLayerRef.current = index;
     setSelectedLayer(index);
   }, []);
+
+  const selectPhysicalLayout = useCallback(
+    (index: number): Promise<void> =>
+      enqueue(async () => {
+        const connection = connRef.current;
+        const current = layoutsRef.current;
+        if (!connection || !current) {
+          setSyncState("error");
+          setSyncError("Studio 尚未就绪");
+          return;
+        }
+        if (index === current.activeLayoutIndex) return;
+        if (index < 0 || index >= current.layouts.length) return;
+
+        setSyncState("applying");
+        setSyncError(null);
+        try {
+          const nextKeymap = await setActivePhysicalLayout(
+            connection.conn,
+            index,
+          );
+          if (!nextKeymap) throw new Error("设备拒绝切换物理布局");
+          setLayouts({ ...current, activeLayoutIndex: index });
+          setKeymap(nextKeymap);
+          selectedLayerRef.current = 0;
+          setSelectedLayer(0);
+          setUnsaved(true);
+          pushLog(
+            `切换物理布局 -> ${current.layouts[index]?.name ?? index}`,
+          );
+          scheduleAutoSave();
+        } catch (error) {
+          const message = (error as Error).message || String(error);
+          setSyncState("error");
+          setSyncError(message);
+          pushLog("切换物理布局失败: " + message);
+        }
+      }),
+    [enqueue, scheduleAutoSave, setKeymap, setLayouts, setUnsaved],
+  );
 
   const applyBinding = useCallback(
     (keyPosition: number, binding: Binding): Promise<void> =>
@@ -209,8 +295,8 @@ export const useStudioDevice = (): StudioController => {
           });
           if (result !== "ok") throw new Error("behavior、参数或键位无效");
 
-          const layers = currentKeymap.layers.map((item, index) =>
-            index === layerIndex
+          const nextLayers = currentKeymap.layers.map((item, i) =>
+            i === layerIndex
               ? {
                   ...item,
                   bindings: item.bindings.map((current, position) =>
@@ -219,7 +305,7 @@ export const useStudioDevice = (): StudioController => {
                 }
               : item,
           );
-          setKeymap({ ...currentKeymap, layers });
+          setKeymap({ ...currentKeymap, layers: nextLayers });
           setUnsaved(true);
           pushLog(`改键 pos=${keyPosition} -> behavior ${binding.behaviorId}`);
           scheduleAutoSave();
@@ -263,11 +349,15 @@ export const useStudioDevice = (): StudioController => {
     [clearSaveTimer],
   );
 
+  const supportsLighting = keyboardProfile !== null;
+
   return useMemo(
     () => ({
       connected,
       loading,
       deviceName,
+      keyboardProfile,
+      supportsLighting,
       keymap,
       layouts,
       behaviors,
@@ -278,6 +368,7 @@ export const useStudioDevice = (): StudioController => {
       connect,
       disconnect,
       selectLayer,
+      selectPhysicalLayout,
       applyBinding,
       save,
       discard,
@@ -286,6 +377,8 @@ export const useStudioDevice = (): StudioController => {
       connected,
       loading,
       deviceName,
+      keyboardProfile,
+      supportsLighting,
       keymap,
       layouts,
       behaviors,
@@ -296,6 +389,7 @@ export const useStudioDevice = (): StudioController => {
       connect,
       disconnect,
       selectLayer,
+      selectPhysicalLayout,
       applyBinding,
       save,
       discard,

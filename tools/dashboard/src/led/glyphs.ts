@@ -1,5 +1,8 @@
-import { AXIS_INDICES, AXIS_LAYOUT, type Rgb } from "../device/hid/protocol";
+import { DEFAULT_PROFILE } from "@planckeys/keyboard-profile";
+import type { Rgb } from "../device/hid/protocol";
 import { DIGIT_3X5, DIGIT_COL0, DIGIT_MAX } from "./constants";
+
+const { axisLayout, axisIndices } = DEFAULT_PROFILE;
 
 /** 把一段字模按左上角 (row0,col0) 盖到画布 draft 上（就地修改）。 */
 export const stampGlyph = (
@@ -13,7 +16,7 @@ export const stampGlyph = (
     const row = glyph[r];
     for (let c = 0; c < row.length; c++) {
       if (row[c] !== "1") continue;
-      const idx = AXIS_LAYOUT[row0 + r]?.[col0 + c];
+      const idx = axisLayout[row0 + r]?.[col0 + c];
       if (idx == null) continue;
       draft[idx] = { r: color.r, g: color.g, b: color.b };
     }
@@ -30,7 +33,7 @@ export const paintNumber = (
   const glyph = DIGIT_3X5[String(n)];
   if (!glyph) return null;
   const draft = base.map((p) => ({ ...p }));
-  for (const idx of AXIS_INDICES) draft[idx] = { r: 0, g: 0, b: 0 };
+  for (const idx of axisIndices) draft[idx] = { r: 0, g: 0, b: 0 };
   stampGlyph(draft, glyph, 0, DIGIT_COL0, color);
   return draft;
 };

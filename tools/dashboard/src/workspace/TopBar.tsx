@@ -18,6 +18,14 @@ const notifyError = (title: string, error: unknown) => {
 
 export function TopBar({ led, studio, theme }: Props) {
   const connectLed = () => {
+    if (!studio.supportsLighting) {
+      notifications.show({
+        color: "yellow",
+        title: "当前设备无灯效 profile",
+        message: "仅支持改键；请连接带 LED profile 的键盘",
+      });
+      return;
+    }
     led
       .connect()
       .then(() =>
@@ -33,7 +41,7 @@ export function TopBar({ led, studio, theme }: Props) {
         notifications.show({
           color: "teal",
           title: "Studio 已连接",
-          message: "键位编辑就绪，修改将自动保存",
+          message: "键位编辑就绪；有灯效 profile 时显示灯光面板",
         }),
       )
       .catch((error) => notifyError("Studio 连接失败", error));
@@ -54,13 +62,15 @@ export function TopBar({ led, studio, theme }: Props) {
       </Group>
 
       <Group gap={20} wrap="nowrap" ml="auto">
-        <ConnectBar
-          label="HID"
-          connected={led.connected}
-          detail={led.productName}
-          onConnect={connectLed}
-          onDisconnect={() => void led.disconnect()}
-        />
+        {studio.supportsLighting && (
+          <ConnectBar
+            label="HID"
+            connected={led.connected}
+            detail={led.productName}
+            onConnect={connectLed}
+            onDisconnect={() => void led.disconnect()}
+          />
+        )}
         <ConnectBar
           label="Studio"
           connected={studio.connected}

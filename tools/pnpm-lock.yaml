@@ -10,6 +10,9 @@ importers:
 
   agent-bridge:
     dependencies:
+      '@planckeys/keyboard-profile':
+        specifier: workspace:*
+        version: link:../keyboard-profile
       '@planckeys/led-protocol':
         specifier: workspace:*
         version: link:../led-protocol
@@ -38,6 +41,9 @@ importers:
       '@mantine/notifications':
         specifier: ^8.3.18
         version: 8.3.18(@mantine/core@8.3.18(@mantine/hooks@8.3.18(react@18.3.1))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@mantine/hooks@8.3.18(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@planckeys/keyboard-profile':
+        specifier: workspace:*
+        version: link:../keyboard-profile
       '@planckeys/led-protocol':
         specifier: workspace:*
         version: link:../led-protocol
@@ -103,7 +109,17 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  keyboard-profile:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   led-protocol:
+    dependencies:
+      '@planckeys/keyboard-profile':
+        specifier: workspace:*
+        version: link:../keyboard-profile
     devDependencies:
       typescript:
         specifier: ^5.7.2

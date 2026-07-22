@@ -2,7 +2,8 @@
  * WebHID 传输层（零 React）。负责打开/发送/关闭 Raw HID 设备，
  * 上层只经由此类发送已组好的 32 字节报文。
  */
-import { REPORT_SIZE, USAGE_PAGE } from "./protocol";
+import { DEFAULT_PROFILE } from "@planckeys/keyboard-profile";
+import { REPORT_SIZE } from "./protocol";
 
 export type LedDeviceListener = (device: HIDDevice | null) => void;
 
@@ -19,12 +20,15 @@ export class LedDevice {
   }
 
   /** 让用户手势选设备并打开（须由点击等用户手势触发）。 */
-  async request(onLost: () => void): Promise<HIDDevice> {
+  async request(
+    onLost: () => void,
+    usagePage: number = DEFAULT_PROFILE.hidUsagePage,
+  ): Promise<HIDDevice> {
     if (!("hid" in navigator)) {
       throw new Error("此浏览器不支持 WebHID（请用 Chrome / Edge）");
     }
     const devices = await navigator.hid.requestDevice({
-      filters: [{ usagePage: USAGE_PAGE }],
+      filters: [{ usagePage }],
     });
     if (!devices.length) {
       throw new Error("未选择设备");

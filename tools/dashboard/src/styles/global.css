@@ -89,6 +89,14 @@ body {
     "layers candidates lighting";
 }
 
+/* 无灯效 profile：仅改键，收起右侧灯光栏 */
+.workspace.no-lighting {
+  grid-template-columns: 150px minmax(620px, 1fr);
+  grid-template-areas:
+    "layers keyboard"
+    "layers candidates";
+}
+
 /* ---------- Layer rail ---------- */
 .layer-rail {
   grid-area: layers;
@@ -427,6 +435,10 @@ body.is-resizing {
 @media (max-width: 1180px) {
   .workspace {
     grid-template-columns: 132px minmax(560px, 1fr) 320px;
+  }
+
+  .workspace.no-lighting {
+    grid-template-columns: 132px minmax(560px, 1fr);
   }
 
   .ws-topbar {

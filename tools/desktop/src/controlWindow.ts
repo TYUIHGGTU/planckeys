@@ -23,7 +23,10 @@ const dashboardIndex = (): string => join(dashboardDir(), "dist", "index.html");
 
 /**
  * 放行渲染层的 WebHID（控灯）与 Web Serial（改键）。Electron 默认会弹出原生设备
- * 选择器并要求我们回调选中项；这里自动挑中 PlanckKeys 设备 / ZMK 串口，体验接近网页。
+ * 选择器并要求我们回调选中项。
+ *
+ * - HID：优先 PlanckKeys（有 LED profile）；否则取列表第一项。
+ * - Serial：优先常见 ZMK VID，否则取第一项——以便改键任意 Studio 键盘。
  */
 const wirePermissions = (ses: Session): void => {
   if (permsWired.has(ses)) return;
@@ -37,13 +40,15 @@ const wirePermissions = (ses: Session): void => {
   ses.on("select-hid-device", (event, details, callback) => {
     event.preventDefault();
     const list = details.deviceList;
-    const pick = list.find((d) => (d.name ?? "").includes("PlanckKeys")) ?? list[0];
+    const pick =
+      list.find((d) => /planckeys/i.test(d.name ?? "")) ?? list[0];
     logStore.append(`[desktop] 控制台选择 HID：${pick?.name ?? "无匹配设备"}`);
     callback(pick?.deviceId);
   });
 
   ses.on("select-serial-port", (event, portList, _wc, callback) => {
     event.preventDefault();
+    // 优先 ZMK；若无匹配则仍选第一项，支持其它已启用 Studio 的键盘改键。
     const pick =
       portList.find((p) =>
         ZMK_VENDOR_IDS.includes((p.vendorId ?? "").toLowerCase()),

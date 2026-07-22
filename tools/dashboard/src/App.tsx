@@ -5,8 +5,8 @@ import { Workspace } from "./workspace/Workspace";
 import { useTheme } from "./workspace/useTheme";
 
 export default function App() {
-  const led = useLedDevice();
   const studio = useStudioDevice();
+  const led = useLedDevice(studio.keyboardProfile);
   const theme = useTheme();
   const hint = browserHint();
 

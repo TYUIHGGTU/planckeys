@@ -7,13 +7,14 @@ ZMK 固件模块，与本工作区互不影响。
 
 | 包 | 说明 |
 | --- | --- |
-| `@planckeys/led-protocol` | 左板 Raw HID 协议**单一真源**（`0xFF60`、报文打包、板载布局）。 |
+| `@planckeys/keyboard-profile` | 键盘 LED/HID **profile**（几何、键→灯映射、设备匹配）；改键布局仍来自 Studio RPC。 |
+| `@planckeys/led-protocol` | Raw HID **线材协议**（报文打包）；几何短期再导出自 keyboard-profile。 |
 | `@planckeys/agent-bridge` | 常驻守护进程：hooks 被动收 agent 事件 + `node-hid` 驱动状态灯。 |
 | `@planckeys/dashboard` | 网页控制台：WebHID 控灯 + Web Serial（ZMK Studio）实时改键。 |
 | `@planckeys/desktop` | macOS 菜单栏 App：监管 agent-bridge + 内嵌 dashboard 控制台。 |
 
-依赖关系：`agent-bridge` 与 `dashboard` 均以 `workspace:*` 依赖 `led-protocol`；`desktop`
-以子进程方式 spawn `agent-bridge`、以窗口加载 `dashboard` 的构建产物。
+依赖关系：`led-protocol` → `keyboard-profile`；`agent-bridge` / `dashboard` 依赖二者；
+`desktop` 以子进程 spawn `agent-bridge`、以窗口加载 `dashboard` 构建产物。
 
 ## 首次准备（只需一次）
 

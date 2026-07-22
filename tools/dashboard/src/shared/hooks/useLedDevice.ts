@@ -1,11 +1,18 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  DEFAULT_PROFILE,
+  type KeyboardProfile,
+} from "@planckeys/keyboard-profile";
 import { LedDevice } from "../../device/hid/ledDevice";
 import {
-  AXIS_LAYOUT,
-  LED_COUNT,
   LedMode,
   LedZone,
-  UNDERGLOW_INDICES,
   buildAllPixelReports,
   buildConfigReport,
   buildPixelReport,
@@ -18,8 +25,8 @@ import { DEFAULT_BRIGHTNESS, DEFAULT_HEX, DEFAULT_SPEED } from "../../led/consta
 import type { ColorScheme } from "../../led/schemes";
 import { pushLog } from "../log";
 
-const makeDefaultCanvas = (): Rgb[] =>
-  Array.from({ length: LED_COUNT }, () => hexToRgb(DEFAULT_HEX));
+const makeDefaultCanvas = (ledCount: number): Rgb[] =>
+  Array.from({ length: ledCount }, () => hexToRgb(DEFAULT_HEX));
 
 const makeDefaultZone = (): ZoneConfig => ({
   mode: LedMode.Solid,
@@ -35,6 +42,7 @@ export interface LedController {
   underglow: ZoneConfig;
   baseColor: string;
   error: string | null;
+  profile: KeyboardProfile;
 
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
@@ -50,11 +58,16 @@ export interface LedController {
   setCanvas: (next: Rgb[], note?: string) => void;
 }
 
-export const useLedDevice = (): LedController => {
+export const useLedDevice = (
+  profile: KeyboardProfile | null = DEFAULT_PROFILE,
+): LedController => {
+  const activeProfile = profile ?? DEFAULT_PROFILE;
   const deviceRef = useRef<LedDevice>(new LedDevice());
   const [connected, setConnected] = useState(false);
   const [productName, setProductName] = useState<string | null>(null);
-  const [pixels, setPixels] = useState<Rgb[]>(makeDefaultCanvas);
+  const [pixels, setPixels] = useState<Rgb[]>(() =>
+    makeDefaultCanvas(activeProfile.ledCount),
+  );
   const [axis, setAxis] = useState<ZoneConfig>(makeDefaultZone);
   const [underglow, setUnderglow] = useState<ZoneConfig>(makeDefaultZone);
   const [baseColor, setBaseColor] = useState(DEFAULT_HEX);
@@ -66,6 +79,27 @@ export const useLedDevice = (): LedController => {
   axisRef.current = axis;
   const underglowRef = useRef(underglow);
   underglowRef.current = underglow;
+  const profileRef = useRef(activeProfile);
+  profileRef.current = activeProfile;
+
+  // Studio 切换到无灯效设备时断开 HID。
+  useEffect(() => {
+    if (profile === null && connected) {
+      void deviceRef.current.close().then(() => {
+        setConnected(false);
+        setProductName(null);
+        pushLog("当前设备无灯效 profile，已断开 HID");
+      });
+    }
+  }, [profile, connected]);
+
+  // profile 灯数变化时重置画布尺寸（未连接时）。
+  useEffect(() => {
+    if (connected) return;
+    const next = makeDefaultCanvas(activeProfile.ledCount);
+    setPixels(next);
+    pixelsRef.current = next;
+  }, [activeProfile.ledCount, connected]);
 
   const safeSend = useCallback(async (operation: () => Promise<void>) => {
     if (!deviceRef.current.isOpen) return;
@@ -106,13 +140,12 @@ export const useLedDevice = (): LedController => {
         setConnected(false);
         setProductName(null);
         pushLog("设备已拔出");
-      });
+      }, profileRef.current.hidUsagePage);
       setConnected(true);
       setProductName(device.productName ?? "HID");
       setError(null);
       pushLog("已连接并打开 HID 设备");
       sendAllPixels(pixelsRef.current);
-      // Legacy CONFIG initializes older firmware; A5 then restores independent zones.
       await safeSend(() =>
         deviceRef.current.send(
           buildConfigReport(
@@ -198,7 +231,7 @@ export const useLedDevice = (): LedController => {
 
   const setPixelColor = useCallback(
     (index: number, color: Rgb) => {
-      if (index < 0 || index >= LED_COUNT) return;
+      if (index < 0 || index >= profileRef.current.ledCount) return;
       const next = pixelsRef.current.map((pixel) => ({ ...pixel }));
       next[index] = { ...color };
       setPixels(next);
@@ -234,19 +267,20 @@ export const useLedDevice = (): LedController => {
 
   const applyScheme = useCallback(
     (scheme: ColorScheme) => {
+      const { axisLayout, underglowIndices } = profileRef.current;
       const next = pixelsRef.current.map((pixel) => ({ ...pixel }));
-      const columns = AXIS_LAYOUT[0].length;
-      for (let row = 0; row < AXIS_LAYOUT.length; row++) {
+      const columns = axisLayout[0]?.length ?? 0;
+      for (let row = 0; row < axisLayout.length; row++) {
         for (let column = 0; column < columns; column++) {
-          const index = AXIS_LAYOUT[row][column];
+          const index = axisLayout[row][column];
           if (index !== null) {
             next[index] = hexToRgb(scheme.paint(row, column, columns));
           }
         }
       }
-      UNDERGLOW_INDICES.forEach((index, position) => {
+      underglowIndices.forEach((index, position) => {
         next[index] = hexToRgb(
-          scheme.under(position, UNDERGLOW_INDICES.length),
+          scheme.under(position, underglowIndices.length),
         );
       });
       setBaseColor(scheme.primary);
@@ -264,6 +298,7 @@ export const useLedDevice = (): LedController => {
       underglow,
       baseColor,
       error,
+      profile: activeProfile,
       connect,
       disconnect,
       setZoneMode,
@@ -285,6 +320,7 @@ export const useLedDevice = (): LedController => {
       underglow,
       baseColor,
       error,
+      activeProfile,
       connect,
       disconnect,
       setZoneMode,

@@ -1,4 +1,5 @@
 packages:
+  - "keyboard-profile"
   - "led-protocol"
   - "agent-bridge"
   - "dashboard"

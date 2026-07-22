@@ -1,7 +1,7 @@
 /**
  * Studio RPC 领域封装：把 zmk-studio-ts-client 的原始 protobuf 响应
  * 映射成本应用使用的精简类型。UI 只依赖这里导出的类型/函数，
- * 不直接 call_rpc，方便单测与日后换 bridge 代理（方案 D）。
+ * 不直接 call_rpc，方便单测与日后换 bridge 代理。
  */
 import { call_rpc, type RpcConnection } from "@zmkfirmware/zmk-studio-ts-client";
 
@@ -27,12 +27,18 @@ export interface KeymapData {
   maxLayerNameLength: number;
 }
 
-/** 物理布局里单个键的位置（单位为 1/100 键位；渲染时自行缩放）。 */
+/**
+ * 物理布局里单个键的位置。
+ * x/y/width/height/r/rx/ry 均为固件 centi 单位（1/100）；渲染时自行缩放。
+ */
 export interface PhysicalKey {
   x: number;
   y: number;
   width: number;
   height: number;
+  r: number;
+  rx: number;
+  ry: number;
 }
 
 export interface PhysicalLayout {
@@ -50,6 +56,58 @@ export interface BehaviorSummary {
   displayName: string;
 }
 
+const mapKeymap = (km: {
+  availableLayers: number;
+  maxLayerNameLength: number;
+  layers: Array<{
+    id: number;
+    name: string;
+    bindings: Array<{ behaviorId: number; param1: number; param2: number }>;
+  }>;
+}): KeymapData => ({
+  availableLayers: km.availableLayers,
+  maxLayerNameLength: km.maxLayerNameLength,
+  layers: km.layers.map((l) => ({
+    id: l.id,
+    name: l.name,
+    bindings: l.bindings.map((b) => ({
+      behaviorId: b.behaviorId,
+      param1: b.param1,
+      param2: b.param2,
+    })),
+  })),
+});
+
+const mapLayouts = (pl: {
+  activeLayoutIndex: number;
+  layouts: Array<{
+    name: string;
+    keys: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      r?: number;
+      rx?: number;
+      ry?: number;
+    }>;
+  }>;
+}): PhysicalLayoutsData => ({
+  activeLayoutIndex: pl.activeLayoutIndex,
+  layouts: pl.layouts.map((layout) => ({
+    name: layout.name,
+    keys: layout.keys.map((k) => ({
+      x: k.x,
+      y: k.y,
+      width: k.width,
+      height: k.height,
+      r: k.r ?? 0,
+      rx: k.rx ?? 0,
+      ry: k.ry ?? 0,
+    })),
+  })),
+});
+
 export const getDeviceInfo = async (
   conn: RpcConnection,
 ): Promise<DeviceInfo | null> => {
@@ -65,19 +123,7 @@ export const getKeymap = async (
   const resp = await call_rpc(conn, { keymap: { getKeymap: true } });
   const km = resp.keymap?.getKeymap;
   if (!km) return null;
-  return {
-    availableLayers: km.availableLayers,
-    maxLayerNameLength: km.maxLayerNameLength,
-    layers: km.layers.map((l) => ({
-      id: l.id,
-      name: l.name,
-      bindings: l.bindings.map((b) => ({
-        behaviorId: b.behaviorId,
-        param1: b.param1,
-        param2: b.param2,
-      })),
-    })),
-  };
+  return mapKeymap(km);
 };
 
 export const getPhysicalLayouts = async (
@@ -86,18 +132,20 @@ export const getPhysicalLayouts = async (
   const resp = await call_rpc(conn, { keymap: { getPhysicalLayouts: true } });
   const pl = resp.keymap?.getPhysicalLayouts;
   if (!pl) return null;
-  return {
-    activeLayoutIndex: pl.activeLayoutIndex,
-    layouts: pl.layouts.map((layout) => ({
-      name: layout.name,
-      keys: layout.keys.map((k) => ({
-        x: k.x,
-        y: k.y,
-        width: k.width,
-        height: k.height,
-      })),
-    })),
-  };
+  return mapLayouts(pl);
+};
+
+/** 切换固件当前物理布局；成功时返回该布局对应的 keymap。 */
+export const setActivePhysicalLayout = async (
+  conn: RpcConnection,
+  layoutIndex: number,
+): Promise<KeymapData | null> => {
+  const resp = await call_rpc(conn, {
+    keymap: { setActivePhysicalLayout: layoutIndex },
+  });
+  const ok = resp.keymap?.setActivePhysicalLayout?.ok;
+  if (!ok) return null;
+  return mapKeymap(ok);
 };
 
 export const listBehaviors = async (

@@ -1,8 +1,13 @@
 import HID from "node-hid";
+import {
+  DEFAULT_PROFILE,
+  profileForUsagePage,
+  resolveProfile,
+  type KeyboardProfile,
+} from "@planckeys/keyboard-profile";
 import { log } from "./logger.js";
 import {
   LedMode,
-  USAGE_PAGE,
   buildConfigReport,
   buildFillReport,
   buildSparsePixelReports,
@@ -11,20 +16,26 @@ import {
 import { RenderTarget } from "./threadStore.js";
 
 /**
- * Owns the connection to the Planckeys left board and turns render targets into
- * Raw HID reports. Auto-reconnects; when no device is present it degrades to a
- * no-op (frames are dropped) so the bridge can run headless / on CI.
+ * Owns the connection to a profile-matched Raw HID board and turns render
+ * targets into reports. Auto-reconnects; when no device is present it degrades
+ * to a no-op so the bridge can run headless / on CI.
  */
 export class HidDevice {
   private device: HID.HID | null = null;
   private outputReportId = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private closed = false;
+  private matchedProfile: KeyboardProfile | null = null;
+  private missingProfileLogged = false;
 
   constructor(
     private readonly reconnectMs: number,
     private readonly dryRun = false,
   ) {}
+
+  get profile(): KeyboardProfile | null {
+    return this.matchedProfile;
+  }
 
   start(): void {
     if (this.dryRun) {
@@ -42,7 +53,7 @@ export class HidDevice {
     }, this.reconnectMs);
   }
 
-  private findDevicePath(): string | null {
+  private findDevice(): { path: string; profile: KeyboardProfile } | null {
     let devices: HID.Device[];
     try {
       devices = HID.devices();
@@ -50,30 +61,66 @@ export class HidDevice {
       log.warn("HID.devices() failed:", (e as Error).message);
       return null;
     }
-    const match = devices.find((d) => d.usagePage === USAGE_PAGE);
-    if (!match || !match.path) return null;
-    log.info(
-      `Found Planckeys HID: ${match.product ?? "?"} (vid=${match.vendorId?.toString(16)} pid=${match.productId?.toString(16)})`,
+
+    const candidates = devices.filter(
+      (d) =>
+        d.path &&
+        d.usagePage != null &&
+        profileForUsagePage(d.usagePage) !== null,
     );
-    return match.path;
+    if (!candidates.length) return null;
+
+    const preferred =
+      candidates.find((d) =>
+        resolveProfile({
+          productName: d.product,
+          vendorId: d.vendorId,
+          productId: d.productId,
+        }),
+      ) ?? candidates[0];
+
+    const profile =
+      resolveProfile({
+        productName: preferred.product,
+        vendorId: preferred.vendorId,
+        productId: preferred.productId,
+      }) ??
+      profileForUsagePage(preferred.usagePage!) ??
+      DEFAULT_PROFILE;
+
+    if (!preferred.path) return null;
+
+    log.info(
+      `Found HID profile=${profile.id}: ${preferred.product ?? "?"} (vid=${preferred.vendorId?.toString(16)} pid=${preferred.productId?.toString(16)})`,
+    );
+    return { path: preferred.path, profile };
   }
 
   private tryOpen(): void {
     if (this.device || this.closed) return;
-    const path = this.findDevicePath();
-    if (!path) {
-      log.debug("Planckeys HID not found (usagePage 0xFF60); will retry.");
+    const found = this.findDevice();
+    if (!found) {
+      if (!this.missingProfileLogged) {
+        log.warn(
+          "No keyboard-profile HID device found; LED control idle until a matching board is connected.",
+        );
+        this.missingProfileLogged = true;
+      } else {
+        log.debug("Profile HID not found; will retry.");
+      }
       this.scheduleReconnect();
       return;
     }
+    this.missingProfileLogged = false;
     try {
-      const device = new HID.HID(path);
+      const device = new HID.HID(found.path);
       device.on("error", (err) => {
         log.warn("HID error:", (err as Error).message);
         this.handleDisconnect();
       });
       this.device = device;
-      log.info("HID connected.");
+      this.matchedProfile = found.profile;
+      log.info(`HID connected (profile=${found.profile.id}).`);
     } catch (e) {
       log.warn("Failed to open HID device:", (e as Error).message);
       this.scheduleReconnect();
@@ -89,6 +136,7 @@ export class HidDevice {
       }
     }
     this.device = null;
+    this.matchedProfile = null;
     if (!this.closed) {
       log.info("HID disconnected; will reconnect.");
       this.scheduleReconnect();

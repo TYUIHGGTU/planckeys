@@ -16,6 +16,7 @@ import {
   Title,
   UnstyledButton,
 } from "@mantine/core";
+import type { KeyboardProfile } from "@planckeys/keyboard-profile";
 import { LedZone } from "../device/hid/protocol";
 import { hexToRgb, normalizeHex } from "../led/color";
 import { PRESETS, QUICK_COLORS } from "../led/constants";
@@ -27,6 +28,7 @@ import type { LedController } from "../shared/hooks/useLedDevice";
 
 interface Props {
   led: LedController;
+  profile: KeyboardProfile;
   selectedKey: number | null;
 }
 
@@ -64,7 +66,7 @@ function SliderRow({
   );
 }
 
-export function LightingPanel({ led, selectedKey }: Props) {
+export function LightingPanel({ led, profile, selectedKey }: Props) {
   const [zone, setZone] = useState<LedZone>(LedZone.Axis);
   const [hexInput, setHexInput] = useState(led.baseColor);
   const config = zone === LedZone.Axis ? led.axis : led.underglow;
@@ -83,15 +85,13 @@ export function LightingPanel({ led, selectedKey }: Props) {
 
   const applyToSelectedKey = () => {
     if (selectedKey === null) return;
-    const ledIndex = ledIndexForKeyPosition(selectedKey);
+    const ledIndex = ledIndexForKeyPosition(selectedKey, profile);
     if (ledIndex !== null) led.setPixelColor(ledIndex, hexToRgb(led.baseColor));
   };
 
   const fillZone = () =>
     led.fillSubset(
-      zone === LedZone.Axis
-        ? Array.from({ length: 22 }, (_, index) => index + 6)
-        : [0, 1, 2, 3, 4, 5],
+      zone === LedZone.Axis ? profile.axisIndices : profile.underglowIndices,
       hexToRgb(led.baseColor),
     );
 
@@ -142,7 +142,9 @@ export function LightingPanel({ led, selectedKey }: Props) {
               独立灯效
             </Text>
             <Text size="xs" c="dimmed">
-              {zone === LedZone.Axis ? "22 颗轴灯" : "6 颗底灯"}
+              {zone === LedZone.Axis
+                ? `${profile.axisIndices.length} 颗轴灯`
+                : `${profile.underglowIndices.length} 颗底灯`}
             </Text>
           </Group>
           <SegmentedControl
@@ -251,9 +253,17 @@ export function LightingPanel({ led, selectedKey }: Props) {
           </Text>
         </Group>
         {zone === LedZone.Axis ? (
-          <AxisGrid pixels={led.pixels} onToggle={led.togglePixel} />
+          <AxisGrid
+            pixels={led.pixels}
+            profile={profile}
+            onToggle={led.togglePixel}
+          />
         ) : (
-          <UnderGrid pixels={led.pixels} onToggle={led.togglePixel} />
+          <UnderGrid
+            pixels={led.pixels}
+            profile={profile}
+            onToggle={led.togglePixel}
+          />
         )}
       </Fieldset>
     </aside>
