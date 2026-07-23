@@ -52,6 +52,10 @@ cd tools
 pnpm --filter @planckeys/desktop dev   # 或在根用 `pnpm desktop`
 ```
 
+> `dev` / `start` 启动前会**先构建 dashboard 产物**（`pnpm --filter @planckeys/dashboard... run build`，
+> 含 `led-protocol` 等工作区依赖），确保窗口加载的是最新的 `dashboard/dist`，
+> 避免加载到旧产物。若只想改 dashboard 并要热更新，改用 `PLANCKEYS_DASHBOARD_URL` 指向其开发服务器（见上）。
+
 > `dev` / `start` 走 `scripts/run-dev.mjs` 启动器：
 > - 首次会把 Electron 的 app 包用 APFS clonefile 克隆成本地 `.dev/Planckeys.app`（写时复制、
 >   秒级、几乎不占额外磁盘），改掉 `Info.plist` 的 `CFBundleName` 并 ad-hoc 重签，让 Cmd-Tab /

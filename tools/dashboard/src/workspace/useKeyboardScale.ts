@@ -11,7 +11,11 @@ import type { PhysicalLayout } from "../device/studio/rpc";
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.15;
-const PADDING = 48;
+// 横向留白（左右各半）。
+const PADDING_X = 48;
+// 纵向留白：除常规上下留白外，还要为 .kb-canvas::after 那道向画布下方延伸约 30px 的
+// 彩虹辉光预留空间，否则竖长布局（分体左板）自适应铺满后辉光溢出会触发竖向滚动条。
+const PADDING_Y = 88;
 
 const clampZoom = (value: number): number =>
   Math.round(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)) * 100) / 100;
@@ -49,8 +53,8 @@ export const useKeyboardScale = (
   const recompute = useCallback(() => {
     const node = containerRef.current;
     if (!node || !naturalWidth || !naturalHeight) return;
-    const availWidth = node.clientWidth - PADDING;
-    const availHeight = node.clientHeight - PADDING;
+    const availWidth = node.clientWidth - PADDING_X;
+    const availHeight = node.clientHeight - PADDING_Y;
     if (availWidth <= 0 || availHeight <= 0) return;
     const next = Math.min(
       availWidth / naturalWidth,

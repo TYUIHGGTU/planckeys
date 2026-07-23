@@ -7,8 +7,9 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "npm run build && node scripts/run-dev.mjs",
-    "dev": "npm run build && node scripts/run-dev.mjs",
+    "build:dashboard": "pnpm --filter @planckeys/dashboard... run build",
+    "start": "npm run build && npm run build:dashboard && node scripts/run-dev.mjs",
+    "dev": "npm run build && npm run build:dashboard && node scripts/run-dev.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "engines": {
