@@ -13,7 +13,7 @@ const rowCells = (
   (axisLayout[row] ?? []).filter((x): x is number => x !== null);
 
 /**
- * PlanckKeys 竖向 4×6 点阵的默认 agent 分区：
+ * Planckeys 竖向 4×6 点阵的默认 agent 分区：
  * r0 全局条，r1–r2 会话，r3–r5 告警。
  */
 export const deriveAgentZones = (

@@ -27,7 +27,7 @@
 ## 二、改动文件总览
 
 ### 分体 → 独立
-- `config/boards/arm/planck/Kconfig.defconfig`：去掉 `ZMK_SPLIT` / `ZMK_SPLIT_ROLE_CENTRAL`，左右各设蓝牙名 `PlanckKeys L` / `PlanckKeys R`。
+- `config/boards/arm/planck/Kconfig.defconfig`：去掉 `ZMK_SPLIT` / `ZMK_SPLIT_ROLE_CENTRAL`，左右各设蓝牙名 `Planckeys L` / `Planckeys R`。
 - `config/boards/arm/planck/planck.dtsi`：合并 12 列 44 键变换 → 每板 6 列 22 键；44 键物理布局下放到各板。
 - `config/boards/arm/planck/planck_left.dts` / `planck_right.dts`：各自 22 键旋转 90° 物理布局；右板去 `col-offset`、覆盖底排 map；各留本侧编码器。
 - `config/planck_left.keymap` / `planck_right.keymap`（新增）：各 22 键 + nav 层 + BLE 系统层 + 同板 combo 入口；删除共享 `config/planck.keymap` 与 `config/boards/arm/planck/planck.keymap`。

@@ -79,7 +79,7 @@
 
 1. 推到 GitHub，Actions 自动构建，取 `planck_left` 的 `.uf2` 刷入左板（进 bootloader 一般双击复位）。
 2. 用 **USB 线**连左板到电脑（WebHID + Raw HID 只在 USB 下可靠，蓝牙不支持）。
-3. **Chrome / Edge** 打开 `tools/led-web/index.html`，点「连接键盘」，选 `PlanckKeys L`。
+3. **Chrome / Edge** 打开 `tools/led-web/index.html`，点「连接键盘」，选 `Planckeys L`。
 4. 选预设、调基色/亮度/速度，或在下方格子里逐颗上色。
 5. 键盘上：同板 combo（左上三键）进系统层，按 `&led_next` 循环切换预设。
 

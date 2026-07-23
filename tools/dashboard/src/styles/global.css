@@ -1,7 +1,7 @@
 /*
- * 全局字号、间距、控件外观由 Mantine 主题接管（见 src/workspace/theme.ts）。
- * 这里只保留应用外壳布局 + 专用手写部件（物理键盘画布、LED 网格）的样式，
- * 颜色一律走 Mantine CSS 变量 / light-dark()，自动跟随主题。
+ * Planckeys 工作台 —— “精密仪器 / 蓝图工作台”视觉语言。
+ * 参考 .mockups/A-ortho.html：等宽读数、发丝级边框、小圆角、暖石墨底、琥珀信号高亮。
+ * 颜色一律走 .ws-app 上的语义令牌（跟随 Mantine light-dark 自动切换）。
  */
 
 html,
@@ -18,32 +18,44 @@ body {
   overflow: hidden;
 }
 
-.eyebrow {
-  display: block;
-  color: var(--mantine-color-dimmed);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-/* ---------- App shell ---------- */
+/* ---------- Design tokens ---------- */
 .ws-app {
-  --ws-surface: light-dark(#fdfcf9, #191612);
-  --ws-surface-2: light-dark(#f1eee7, #221e19);
-  --ws-grid-line: light-dark(#ebe7de, #16130f);
-  --ws-keycap: light-dark(#ffffff, #26221c);
-  --ws-keycap-face: light-dark(#f7f4ee, #2f2a23);
-  --ws-keycap-accent: light-dark(#d8c39c, #6a5636);
-  --ws-pixel-off: light-dark(#eae5db, #241f19);
+  --paper: light-dark(#fbfaf8, #17181b);
+  --paper-2: light-dark(#f2efe8, #202227);
+  --ink: light-dark(#1a1714, #e9e5dc);
+  --graphite: light-dark(#8a8375, #7f838c);
+  --hair: light-dark(#e2ddd2, #2b2d33);
+  --hair-strong: light-dark(#d3cdbf, #34373e);
+  --signal: var(--mantine-primary-color-filled);
+  --grid: light-dark(#c9c3b5, #3a5b70);
+  --grid-alpha: light-dark(0.55, 0.16);
+  --key-face: light-dark(#ffffff, #212329);
+  --key-face-2: light-dark(#f1ece2, #1a1c20);
+  --key-edge: light-dark(#d9d3c6, #34373e);
+  --key-hi: light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.05));
+  --key-shadow: light-dark(#dcd5c6, #0e0f11);
+  --mono: var(--mantine-font-family-monospace);
+
+  --ws-pixel-off: light-dark(#eae5db, #191b1f);
 
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-rows: 56px minmax(0, 1fr);
+  grid-template-rows: 52px minmax(0, 1fr) 30px;
   overflow: hidden;
-  background: var(--mantine-color-body);
-  color: var(--mantine-color-text);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* mono 眉标：大写 + 字距，充当结构性读数标签 */
+.eyebrow {
+  display: block;
+  color: var(--graphite);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .ws-body {
@@ -52,13 +64,14 @@ body {
   flex-direction: column;
 }
 
+/* ---------- Topbar ---------- */
 .ws-topbar {
-  padding: 0 18px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
-  gap: 22px;
-  border-bottom: 1px solid var(--mantine-color-default-border);
-  background: var(--ws-surface);
+  gap: 24px;
+  border-bottom: 1px solid var(--hair);
+  background: var(--paper);
   /* Electron 下顶栏充当窗口标题栏：整体可拖拽，交互控件单独放行。 */
   -webkit-app-region: drag;
   app-region: drag;
@@ -73,42 +86,102 @@ body {
   app-region: no-drag;
 }
 
-/* 桌面端隐藏了系统标题栏，为内嵌的 macOS 交通灯预留左侧空间。 */
 .is-electron .ws-topbar {
   padding-left: 84px;
 }
 
 .ws-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   white-space: nowrap;
 }
 
 .ws-brand-mark {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--mantine-radius-md);
-  background: var(--mantine-primary-color-filled);
-  color: #fff;
-  font-weight: 900;
-  font-size: 16px;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--signal);
 }
 
+.ws-brand-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.ws-brand-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--graphite);
+}
+
+/* 连接状态点 */
+.ws-conns {
+  display: flex;
+  gap: 16px;
+}
+
+.ws-conn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+
+.ws-conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--graphite);
+}
+
+.ws-conn.on {
+  color: var(--ink);
+}
+
+.ws-conn.on .ws-conn-dot {
+  background: var(--signal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 20%, transparent);
+}
+
+.ws-topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ws-connect {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+/* ---------- Workspace grid ---------- */
 .workspace {
   --candidate-height: 292px;
   min-height: 0;
   flex: 1;
   display: grid;
-  grid-template-columns: 150px minmax(620px, 1fr) 344px;
+  grid-template-columns: 172px minmax(560px, 1fr) 320px;
   grid-template-rows: minmax(280px, 1fr) var(--candidate-height);
   grid-template-areas:
     "layers keyboard lighting"
     "layers candidates lighting";
 }
 
-/* 无灯效 profile：仅改键，收起右侧灯光栏 */
 .workspace.no-lighting {
-  grid-template-columns: 150px minmax(620px, 1fr);
+  grid-template-columns: 172px minmax(560px, 1fr);
   grid-template-areas:
     "layers keyboard"
     "layers candidates";
@@ -118,17 +191,116 @@ body {
 .layer-rail {
   grid-area: layers;
   min-height: 0;
-  padding: 16px 12px 12px;
+  padding: 18px 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  border-right: 1px solid var(--mantine-color-default-border);
-  background: var(--ws-surface);
+  gap: 14px;
+  border-right: 1px solid var(--hair);
+  background: var(--paper);
+}
+
+.rail-device {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rail-device-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.rail-device-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--graphite);
+}
+
+.rail-layers {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rail-layers-head {
+  margin-bottom: 8px;
 }
 
 .layer-scroll {
   flex: 1;
   min-height: 0;
+}
+
+/* 图层条目：左名右寄存器编号，选中态加左侧信号条 + 面色块 */
+.layer-item {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 10px;
+  border: 0;
+  border-top: 1px solid var(--hair);
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.layer-item:last-child {
+  border-bottom: 1px solid var(--hair);
+}
+
+.layer-item:hover {
+  background: color-mix(in srgb, var(--paper-2) 60%, transparent);
+}
+
+.layer-item-reg {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--graphite);
+}
+
+.layer-item.sel {
+  background: var(--paper-2);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.layer-item.sel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 22px;
+  background: var(--signal);
+}
+
+.layer-item.sel .layer-item-reg {
+  color: var(--signal);
+  font-weight: 700;
+}
+
+.rail-foot {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+  color: var(--graphite);
+}
+
+.rail-foot sup {
+  font-size: 0.75em;
 }
 
 /* ---------- Keyboard stage ---------- */
@@ -137,22 +309,108 @@ body {
   min-width: 0;
   min-height: 0;
   position: relative;
-  padding: 16px 22px;
+  padding: 46px 34px 30px 46px;
   overflow: hidden;
-  border-bottom: 1px solid var(--mantine-color-default-border);
-  background-color: var(--mantine-color-body);
-  background-image:
-    linear-gradient(var(--ws-grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--ws-grid-line) 1px, transparent 1px);
-  background-size: 28px 28px;
+  border-bottom: 1px solid var(--hair);
+  background-color: var(--paper);
 }
 
+/* 舞台标签 + 状态点 */
+.stage-label {
+  position: absolute;
+  top: 14px;
+  left: 46px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--graphite);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-label b {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.stage-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.stage-saved i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--signal);
+}
+
+/* 标尺 */
+.stage-ruler-x,
+.stage-ruler-y {
+  position: absolute;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--graphite);
+  pointer-events: none;
+}
+
+.stage-ruler-x {
+  top: 30px;
+  left: 46px;
+  right: 34px;
+  height: 14px;
+  display: flex;
+}
+
+.stage-ruler-x i {
+  flex: 1;
+  border-left: 1px solid var(--hair);
+  padding-left: 3px;
+}
+
+.stage-ruler-y {
+  top: 46px;
+  left: 24px;
+  bottom: 30px;
+  width: 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.stage-ruler-y i {
+  flex: 1;
+  border-top: 1px solid var(--hair);
+  padding-top: 2px;
+  text-align: right;
+  padding-right: 4px;
+}
+
+/* 网格画布 */
 .keyboard-center {
-  height: calc(100% - 46px);
+  position: relative;
+  height: 100%;
   display: grid;
   place-content: safe center;
   justify-items: center;
   overflow: auto;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--grid) calc(var(--grid-alpha) * 100%), transparent)
+        1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--grid) calc(var(--grid-alpha) * 100%), transparent)
+        1px,
+      transparent 1px
+    );
+  background-size: 27px 27px;
 }
 
 .kb-canvas {
@@ -160,16 +418,45 @@ body {
   margin: 0 auto;
 }
 
+/* 键盘下方的彩虹底光晕 —— 页面的“signature”高光时刻 */
+.kb-canvas::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -30px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(
+    90deg,
+    #ff3b3b,
+    #ff8a3d,
+    #ffd43b,
+    #3ddc84,
+    #16d0d0,
+    #3d7bff,
+    #7d5bff,
+    #ff4fa3,
+    #ff3b3b
+  );
+  filter: blur(26px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .workspace-empty {
   height: 100%;
   place-content: center;
+  position: relative;
+  z-index: 1;
 }
 
 .zoom-controls {
   position: absolute;
-  right: 18px;
-  bottom: 16px;
-  background: var(--mantine-color-body);
+  right: 20px;
+  top: 12px;
+  background: var(--paper);
+  border-color: var(--hair) !important;
 }
 
 /* Keycap */
@@ -180,33 +467,55 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 1px solid var(--mantine-color-default-border);
-  border-bottom: 3px solid var(--ws-keycap-accent);
-  border-radius: 9px;
-  background: linear-gradient(180deg, var(--ws-keycap-face), var(--ws-keycap));
-  color: var(--mantine-color-text);
+  border: 1px solid var(--key-edge);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--key-face), var(--key-face-2));
+  color: var(--ink);
+  font-family: var(--mono);
+  box-shadow:
+    inset 0 1px 0 var(--key-hi),
+    0 2px 4px color-mix(in srgb, var(--key-shadow) 70%, transparent);
   cursor: pointer;
   transition:
     transform 120ms ease,
     border-color 120ms ease,
-    box-shadow 120ms ease;
+    box-shadow 120ms ease,
+    color 120ms ease;
 }
 
 .kb-key:hover {
-  border-color: var(--mantine-color-dimmed);
+  border-color: var(--graphite);
   transform: translateY(-1px);
 }
 
+.kb-key-reg {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  font-family: var(--mono);
+  font-size: 8px;
+  line-height: 1;
+  color: var(--graphite);
+  pointer-events: none;
+}
+
 .kb-key.empty {
-  color: var(--mantine-color-dimmed);
-  background: var(--ws-surface-2);
-  border-bottom-color: var(--mantine-color-default-border);
+  color: var(--graphite);
+  background: var(--paper-2);
+  border-color: var(--hair);
+  box-shadow: none;
 }
 
 .kb-key.selected {
-  border-color: var(--mantine-primary-color-filled);
-  border-bottom-color: var(--mantine-primary-color-filled);
-  box-shadow: 0 0 0 2px var(--mantine-primary-color-filled);
+  border-color: var(--signal);
+  color: var(--signal);
+  box-shadow:
+    0 0 0 1px var(--signal),
+    0 0 16px color-mix(in srgb, var(--signal) 35%, transparent);
+}
+
+.kb-key.selected .kb-key-reg {
+  color: color-mix(in srgb, var(--signal) 75%, var(--graphite));
 }
 
 .kb-key.drag-target {
@@ -220,19 +529,82 @@ body {
   padding: 0 3px;
   overflow: hidden;
   font-size: var(--kb-label-size, 12px);
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.15;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.key-inspector {
-  width: 226px;
+/* planck 常量脚注 */
+.stage-planck {
   position: absolute;
-  top: 60px;
-  right: 18px;
-  background: var(--mantine-color-body);
+  right: 20px;
+  bottom: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+  color: var(--graphite);
+  text-align: right;
+  pointer-events: none;
+}
+
+.stage-planck b {
+  color: var(--ink);
+}
+
+/* ---------- Inspector（浮层卡片） ---------- */
+.key-inspector {
+  width: 236px;
+  position: absolute;
+  top: 44px;
+  right: 20px;
+  z-index: 2;
+  background: var(--paper);
+  border: 1px solid var(--hair-strong) !important;
+  border-radius: 4px;
+}
+
+.insp-pos {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--graphite);
+}
+
+.insp-glyph {
+  font-family: var(--mono);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--signal);
+  word-break: break-word;
+}
+
+.insp-kv {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 6px 10px;
+  margin: 2px 0;
+}
+
+.insp-kv dt {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  align-self: center;
+}
+
+.insp-kv dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- Candidate shelf ---------- */
@@ -241,12 +613,12 @@ body {
   min-width: 0;
   min-height: 0;
   position: relative;
-  padding: 12px 16px 14px;
+  padding: 14px 34px 16px 46px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   overflow: hidden;
-  background: var(--ws-surface);
+  background: var(--paper);
 }
 
 .candidate-resizer {
@@ -264,13 +636,13 @@ body {
 
 .candidate-resizer i {
   width: 46px;
-  height: 4px;
-  border-radius: 4px;
-  background: var(--mantine-color-default-border);
+  height: 3px;
+  border-radius: 3px;
+  background: var(--hair-strong);
 }
 
 .candidate-resizer:hover i {
-  background: var(--mantine-color-dimmed);
+  background: var(--graphite);
 }
 
 body.is-resizing {
@@ -280,15 +652,22 @@ body.is-resizing {
 
 .candidate-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
 .candidate-title {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 12px;
+}
+
+.candidate-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--graphite);
 }
 
 .candidate-scroll {
@@ -300,8 +679,8 @@ body.is-resizing {
   padding: 4px 2px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  grid-auto-rows: 52px;
-  gap: 8px;
+  grid-auto-rows: 46px;
+  gap: 7px;
 }
 
 .candidate-key {
@@ -309,17 +688,18 @@ body.is-resizing {
   padding: 4px;
   display: grid;
   place-content: center;
-  border: 1px solid var(--mantine-color-default-border);
-  border-bottom: 2px solid var(--ws-keycap-accent);
-  border-radius: var(--mantine-radius-sm);
-  background: var(--ws-keycap);
-  color: var(--mantine-color-text);
-  font-size: 12px;
-  font-weight: 600;
+  border: 1px solid var(--key-edge);
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--key-face), var(--key-face-2));
+  box-shadow: inset 0 1px 0 var(--key-hi);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
   cursor: grab;
   transition:
     border-color 100ms ease,
-    background 100ms ease;
+    color 100ms ease;
 }
 
 .candidate-key span {
@@ -332,8 +712,8 @@ body.is-resizing {
 }
 
 .candidate-key:hover {
-  border-color: var(--mantine-primary-color-filled);
-  background: var(--mantine-primary-color-light);
+  border-color: var(--signal);
+  color: var(--signal);
 }
 
 .candidate-key:active {
@@ -341,7 +721,7 @@ body.is-resizing {
 }
 
 .candidate-key[aria-disabled="true"] {
-  color: var(--mantine-color-dimmed);
+  color: var(--graphite);
 }
 
 .candidate-empty {
@@ -355,21 +735,21 @@ body.is-resizing {
   min-height: 0;
   padding: 16px;
   overflow: auto;
-  border-left: 1px solid var(--mantine-color-default-border);
-  background: var(--ws-surface);
+  border-left: 1px solid var(--hair);
+  background: var(--paper);
 }
 
 .scheme-btn {
   padding: 4px;
   display: grid;
   gap: 4px;
-  border: 1px solid var(--mantine-color-default-border);
-  border-radius: var(--mantine-radius-sm);
+  border: 1px solid var(--hair);
+  border-radius: 3px;
   transition: border-color 100ms ease;
 }
 
 .scheme-btn:hover {
-  border-color: var(--mantine-primary-color-filled);
+  border-color: var(--signal);
 }
 
 .scheme-preview {
@@ -377,7 +757,7 @@ body.is-resizing {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .scheme-preview i {
@@ -414,10 +794,11 @@ body.is-resizing {
   padding: 0;
   display: grid;
   place-items: center;
-  border: 1px solid var(--mantine-color-default-border);
-  border-radius: 8px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 6px;
   background: var(--ws-pixel-off);
-  color: var(--mantine-color-dimmed);
+  color: var(--graphite);
+  font-family: var(--mono);
   cursor: pointer;
   transition:
     transform 100ms ease,
@@ -443,6 +824,49 @@ body.is-resizing {
   pointer-events: none;
 }
 
+/* ---------- Status bar footer ---------- */
+.ws-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 20px;
+  border-top: 1px solid var(--hair);
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+
+.ws-status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ws-status-item b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ws-status-item .ws-conn-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.ws-status-item.on .ws-conn-dot {
+  background: var(--signal);
+}
+
+.ws-status-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ---------- Responsive ---------- */
 @media (max-height: 820px) {
   .workspace {
     grid-template-rows: minmax(260px, 1fr) min(var(--candidate-height), 250px);
@@ -451,14 +875,14 @@ body.is-resizing {
 
 @media (max-width: 1180px) {
   .workspace {
-    grid-template-columns: 132px minmax(560px, 1fr) 320px;
+    grid-template-columns: 156px minmax(520px, 1fr) 300px;
   }
 
   .workspace.no-lighting {
-    grid-template-columns: 132px minmax(560px, 1fr);
+    grid-template-columns: 156px minmax(520px, 1fr);
   }
 
   .ws-topbar {
-    gap: 12px;
+    gap: 14px;
   }
 }

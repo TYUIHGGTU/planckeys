@@ -1,5 +1,5 @@
 /**
- * PlanckKeys Raw HID 线材协议 —— 报文命令与打包（usage page 见 keyboard-profile）。
+ * Planckeys Raw HID 线材协议 —— 报文命令与打包（usage page 见 keyboard-profile）。
  *
  * 板载 LED 几何已迁至 `@planckeys/keyboard-profile`。本文件短期再导出
  * `LED_COUNT` / `AXIS_LAYOUT` / `UNDERGLOW_INDICES` / `USAGE_PAGE`，避免一次改爆消费方。

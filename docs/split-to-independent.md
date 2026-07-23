@@ -31,12 +31,12 @@
 ```
 if BOARD_PLANCK_LEFT
 config ZMK_KEYBOARD_NAME
-        default "PlanckKeys L"
+        default "Planckeys L"
 endif
 
 if BOARD_PLANCK_RIGHT
 config ZMK_KEYBOARD_NAME
-        default "PlanckKeys R"
+        default "Planckeys R"
 endif
 ```
 

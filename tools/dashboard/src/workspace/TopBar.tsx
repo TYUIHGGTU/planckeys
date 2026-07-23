@@ -1,4 +1,4 @@
-import { Group, SegmentedControl, Text, Title } from "@mantine/core";
+import { SegmentedControl } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { isSelectionCancelled } from "../device/studio/connection";
 import { ConnectBar } from "../shared/components/ConnectBar";
@@ -53,19 +53,13 @@ export function TopBar({ led, studio, theme }: Props) {
 
   return (
     <header className="ws-topbar">
-      <Group gap={10} wrap="nowrap" className="ws-brand">
-        <span className="ws-brand-mark">P</span>
-        <div>
-          <Title order={3} fz={15} lh={1.1}>
-            PlanckKeys
-          </Title>
-          <Text size="xs" c="dimmed" lh={1.2}>
-            键盘工作台
-          </Text>
-        </div>
-      </Group>
+      <div className="ws-brand">
+        <span className="ws-brand-mark">h/</span>
+        <h1 className="ws-brand-name">Planckeys</h1>
+        <span className="ws-brand-sub">keymap · lighting workbench</span>
+      </div>
 
-      <Group gap={20} wrap="nowrap" ml="auto">
+      <div className="ws-topbar-right">
         {studio.supportsLighting && (
           <ConnectBar
             label="HID"
@@ -83,18 +77,18 @@ export function TopBar({ led, studio, theme }: Props) {
           onConnect={connectStudio}
           onDisconnect={() => void studio.disconnect()}
         />
-      </Group>
-
-      <SegmentedControl
-        size="xs"
-        value={theme.mode}
-        onChange={(value) => theme.setMode(value as ThemeController["mode"])}
-        data={THEME_OPTIONS.map((option) => ({
-          value: option.value,
-          label: option.label,
-        }))}
-        aria-label="界面主题"
-      />
+        <SegmentedControl
+          size="xs"
+          radius="sm"
+          value={theme.mode}
+          onChange={(value) => theme.setMode(value as ThemeController["mode"])}
+          data={THEME_OPTIONS.map((option) => ({
+            value: option.value,
+            label: option.label,
+          }))}
+          aria-label="界面主题"
+        />
+      </div>
     </header>
   );
 }

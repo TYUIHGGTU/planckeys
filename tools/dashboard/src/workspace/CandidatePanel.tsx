@@ -107,19 +107,20 @@ export function CandidatePanel({ studio, selectedKey, onApply, size }: Props) {
 
       <div className="candidate-header">
         <div className="candidate-title">
-          <Text fw={600} size="sm">
-            候选键
+          <Text className="eyebrow" component="span">
+            candidates
           </Text>
-          <Text size="xs" c="dimmed">
+          <span className="candidate-hint">
             {selectedKey === null
-              ? "先选择键位后点击应用，或直接拖放"
-              : `点击将应用到 KEY ${selectedKey + 1}`}
-          </Text>
+              ? "选择键位后点击应用，或直接拖放"
+              : `点击应用到 KEY ${String(selectedKey).padStart(2, "0")}`}
+          </span>
         </div>
         <TextInput
           size="xs"
           w={220}
-          placeholder="搜索键值或行为"
+          radius="sm"
+          placeholder="search behaviors…"
           value={query}
           onChange={(event) => setQuery(event.currentTarget.value)}
         />

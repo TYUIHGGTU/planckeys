@@ -92,6 +92,7 @@ export function PhysicalKeyboard({
               if (dropped) onDropBinding?.(pos, dropped);
             }}
           >
+            <span className="kb-key-reg">{String(pos).padStart(2, "0")}</span>
             <span className="kb-key-label">{label}</span>
           </button>
         );

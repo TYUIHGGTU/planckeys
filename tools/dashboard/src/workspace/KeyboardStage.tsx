@@ -1,6 +1,5 @@
 import {
   ActionIcon,
-  Badge,
   Button,
   Card,
   Group,
@@ -8,11 +7,10 @@ import {
   Select,
   Stack,
   Text,
-  Title,
   Tooltip,
 } from "@mantine/core";
 import type { Binding } from "../device/studio/rpc";
-import { bindingLabel } from "../keymap/bindingLabels";
+import { behaviorName, bindingLabel, prettyBehaviorName } from "../keymap/bindingLabels";
 import { BindingPicker } from "../keymap/components/BindingPicker";
 import { PhysicalKeyboard } from "../keymap/components/PhysicalKeyboard";
 import type {
@@ -30,34 +28,14 @@ interface Props {
   onAdvancedOpen: (open: boolean) => void;
 }
 
-const SYNC_META: Record<
-  StudioSyncState,
-  { label: string; color: string }
-> = {
-  idle: { label: "等待连接", color: "gray" },
-  applying: { label: "正在应用", color: "blue" },
-  pending: { label: "等待自动保存", color: "yellow" },
-  saving: { label: "正在保存", color: "blue" },
-  saved: { label: "已保存", color: "teal" },
-  error: { label: "同步失败", color: "red" },
+const SYNC_META: Record<StudioSyncState, { label: string; dim: boolean }> = {
+  idle: { label: "等待连接", dim: true },
+  applying: { label: "正在应用", dim: false },
+  pending: { label: "等待自动保存", dim: false },
+  saving: { label: "正在保存", dim: false },
+  saved: { label: "saved", dim: false },
+  error: { label: "同步失败", dim: false },
 };
-
-function SyncBadge({ studio }: { studio: StudioController }) {
-  const meta = SYNC_META[studio.syncState];
-  return (
-    <Tooltip label={studio.syncError ?? meta.label} withArrow disabled={!studio.syncError}>
-      <Badge
-        variant="light"
-        color={meta.color}
-        size="sm"
-        radius="sm"
-        styles={{ root: { textTransform: "none" } }}
-      >
-        {meta.label}
-      </Badge>
-    </Tooltip>
-  );
-}
 
 const layerTitle = (name: string | undefined, index: number): string =>
   name || (index === 0 ? "默认层" : `功能层 ${index}`);
@@ -85,32 +63,53 @@ export function KeyboardStage({
       label: item.name || `布局 ${index + 1}`,
     })) ?? [];
 
+  const cols = layout
+    ? Math.max(1, Math.round(Math.max(0, ...layout.keys.map((k) => k.x + k.width)) / 100))
+    : 12;
+  const rows = layout
+    ? Math.max(1, Math.round(Math.max(0, ...layout.keys.map((k) => k.y + k.height)) / 100))
+    : 4;
+  const sync = SYNC_META[studio.syncState];
+
   return (
     <section className="keyboard-stage">
-      <Group justify="space-between" align="flex-end" wrap="nowrap">
-        <div>
-          <Text size="xs" c="dimmed">
-            {studio.deviceName ?? "未连接设备"}
-          </Text>
-          <Title order={1}>{layerTitle(layer?.name, studio.selectedLayer)}</Title>
-        </div>
-        <Group gap="xs" wrap="nowrap">
-          {layoutOptions.length > 1 && (
-            <Select
-              size="xs"
-              w={160}
-              allowDeselect={false}
-              data={layoutOptions}
-              value={String(layouts?.activeLayoutIndex ?? 0)}
-              onChange={(value) => {
-                if (value !== null) void studio.selectPhysicalLayout(Number(value));
-              }}
-              aria-label="物理布局"
-            />
-          )}
-          <SyncBadge studio={studio} />
-        </Group>
-      </Group>
+      <div className="stage-label">
+        <b>{layerTitle(layer?.name, studio.selectedLayer)}</b>
+        <Tooltip
+          label={studio.syncError ?? sync.label}
+          withArrow
+          disabled={studio.syncState !== "error"}
+        >
+          <span className="stage-saved" style={sync.dim ? { opacity: 0.5 } : undefined}>
+            <i />
+            {sync.label}
+          </span>
+        </Tooltip>
+        {layoutOptions.length > 1 && (
+          <Select
+            size="xs"
+            w={150}
+            allowDeselect={false}
+            data={layoutOptions}
+            value={String(layouts?.activeLayoutIndex ?? 0)}
+            onChange={(value) => {
+              if (value !== null) void studio.selectPhysicalLayout(Number(value));
+            }}
+            aria-label="物理布局"
+          />
+        )}
+      </div>
+
+      <div className="stage-ruler-x">
+        {Array.from({ length: cols }, (_, i) => (
+          <i key={i}>{i}</i>
+        ))}
+      </div>
+      <div className="stage-ruler-y">
+        {Array.from({ length: rows }, (_, i) => (
+          <i key={i}>{i}</i>
+        ))}
+      </div>
 
       <div className="keyboard-center" ref={scale.containerRef}>
         {showKeyboard ? (
@@ -135,8 +134,15 @@ export function KeyboardStage({
         )}
       </div>
 
+      <div className="stage-planck">
+        <div>
+          <b>h</b> = 6.62607015 × 10<sup>−34</sup> J·s
+        </div>
+        <div>{studio.deviceName ?? "profile · planck"}</div>
+      </div>
+
       {showKeyboard && (
-        <Card className="zoom-controls" p={4} withBorder radius="md">
+        <Card className="zoom-controls" p={4} withBorder radius="sm">
           <Group gap={2} wrap="nowrap">
             <ActionIcon
               variant="subtle"
@@ -174,19 +180,26 @@ export function KeyboardStage({
       )}
 
       {selectedKey !== null && currentBinding && (
-        <Card className="key-inspector" withBorder radius="md" p="sm">
-          <Stack gap={8}>
+        <Card className="key-inspector" withBorder radius="sm" p="md">
+          <Stack gap={10}>
             <div>
               <Text className="eyebrow" component="span">
-                选中键
+                selected key
               </Text>
-              <Text fw={700} c="brand" fz={16} truncate>
-                {bindingLabel(studio.behaviors, currentBinding)}
-              </Text>
-              <Text size="xs" c="dimmed" ff="monospace">
-                KEY {String(selectedKey + 1).padStart(2, "0")}
-              </Text>
+              <div className="insp-pos">KEY {String(selectedKey).padStart(2, "0")}</div>
             </div>
+            <div className="insp-glyph">
+              {bindingLabel(studio.behaviors, currentBinding)}
+            </div>
+            <dl className="insp-kv">
+              <dt>behavior</dt>
+              <dd>{prettyBehaviorName(behaviorName(studio.behaviors, currentBinding.behaviorId))}</dd>
+              <dt>param</dt>
+              <dd>
+                {currentBinding.param1}
+                {currentBinding.param2 ? ` · ${currentBinding.param2}` : ""}
+              </dd>
+            </dl>
             <Popover
               opened={advancedOpen}
               onChange={onAdvancedOpen}
@@ -203,7 +216,7 @@ export function KeyboardStage({
                   fullWidth
                   onClick={() => onAdvancedOpen(!advancedOpen)}
                 >
-                  {advancedOpen ? "收起高级编辑" : "高级编辑"}
+                  {advancedOpen ? "收起高级编辑" : "重新分配 / 高级"}
                 </Button>
               </Popover.Target>
               <Popover.Dropdown>

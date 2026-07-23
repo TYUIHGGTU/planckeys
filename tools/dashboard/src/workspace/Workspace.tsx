@@ -80,6 +80,24 @@ export function Workspace({ led, studio, theme, hint }: Props) {
           )}
         </main>
       </div>
+      <footer className="ws-statusbar">
+        <span className={"ws-status-item" + (studio.connected ? " on" : "")}>
+          <span className="ws-conn-dot" />
+          studio <b>{studio.connected ? "connected" : "offline"}</b>
+        </span>
+        {studio.supportsLighting && (
+          <span className={"ws-status-item" + (led.connected ? " on" : "")}>
+            <span className="ws-conn-dot" />
+            led <b>{led.connected ? "connected" : "offline"}</b>
+          </span>
+        )}
+        <span className="ws-status-right">
+          {studio.supportsLighting && (
+            <span>underglow · bright {led.underglow.brightness}</span>
+          )}
+          <span>zmk studio · web serial + webhid</span>
+        </span>
+      </footer>
     </div>
   );
 }

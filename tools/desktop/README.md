@@ -25,7 +25,7 @@
 - 后台状态灯：App 只负责**编排**（启停/重启/崩溃退避/汇聚日志/透传 `CODEX_BRIDGE_*` 配置），
   收事件与驱动灯仍由 agent-bridge 完成，逻辑零改动。
 - 控制台：窗口加载 dashboard 的静态产物；Electron 默认要求原生设备选择器回调，App 已自动
-  挑中 `PlanckKeys` HID 与 ZMK 串口，体验接近网页版。
+  挑中 `Planckeys` HID 与 ZMK 串口，体验接近网页版。
 
 ## 前置条件
 

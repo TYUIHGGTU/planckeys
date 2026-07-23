@@ -2,7 +2,7 @@
   "name": "@planckeys/led-protocol",
   "version": "0.1.0",
   "private": true,
-  "description": "PlanckKeys Raw HID 线材协议（报文命令与打包）。LED 几何见 @planckeys/keyboard-profile。",
+  "description": "Planckeys Raw HID 线材协议（报文命令与打包）。LED 几何见 @planckeys/keyboard-profile。",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",

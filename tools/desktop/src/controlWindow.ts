@@ -40,7 +40,7 @@ const isZmkPort = (port: SerialPort): boolean =>
  * 放行渲染层的 WebHID（控灯）与 Web Serial（改键）。Electron 不会弹原生选择器，
  * 需由我们回调选中项。
  *
- * - HID：优先 PlanckKeys（有 LED profile）；否则取列表第一项。
+ * - HID：优先 Planckeys（有 LED profile）；否则取列表第一项。
  * - Serial：只有 1 个 ZMK 键盘时直接连、不弹窗（忽略蓝牙口/耳机等非键盘串口）；
  *   有多个 ZMK 键盘时才弹对话框让用户选；一个 ZMK 都识别不到时，退回列出全部设备。
  */
@@ -57,7 +57,7 @@ const wirePermissions = (ses: Session): void => {
     event.preventDefault();
     const list = details.deviceList;
     const pick =
-      list.find((d) => /planckeys/i.test(d.name ?? "")) ?? list[0];
+      list.find((d) => /planck\s*k?eys/i.test(d.name ?? "")) ?? list[0];
     logStore.append(`[desktop] 控制台选择 HID：${pick?.name ?? "无匹配设备"}`);
     callback(pick?.deviceId);
   });

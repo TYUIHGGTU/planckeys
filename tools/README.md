@@ -1,6 +1,6 @@
 # Planckeys 工具集（pnpm monorepo）
 
-`tools/` 是一个 **pnpm workspace**，聚合与 PlanckKeys 键盘配套的 TypeScript 工具。仓库根是
+`tools/` 是一个 **pnpm workspace**，聚合与 Planckeys 键盘配套的 TypeScript 工具。仓库根是
 ZMK 固件模块，与本工作区互不影响。
 
 ## 包

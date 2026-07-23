@@ -1,6 +1,6 @@
 # @planckeys/led-protocol
 
-PlanckKeys Raw HID **线材协议**单一真源：命令字、`LedMode` / `LedZone` / `Rgb` /
+Planckeys Raw HID **线材协议**单一真源：命令字、`LedMode` / `LedZone` / `Rgb` /
 `ZoneConfig`，以及报文打包函数。
 
 LED 几何（`AXIS_LAYOUT` / `LED_COUNT` / `UNDERGLOW_INDICES` / `USAGE_PAGE`）已迁至

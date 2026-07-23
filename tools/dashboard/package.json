@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "PlanckKeys 键盘控制台：网页里同时控灯（WebHID）与实时改键（Web Serial + ZMK Studio RPC）。",
+  "description": "Planckeys 键盘控制台：网页里同时控灯（WebHID）与实时改键（Web Serial + ZMK Studio RPC）。",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

@@ -17,8 +17,6 @@ import { syncLoginItem } from "./autolaunch";
 
 let tray: Tray | null = null;
 
-const BRIGHTNESS_STEPS = [64, 96, 128, 160, 200, 255];
-
 type Point = readonly [number, number];
 
 const distanceToSegment = (x: number, y: number, a: Point, b: Point): number => {
@@ -142,22 +140,6 @@ export const buildMenu = (): void => {
       ? { label: "停止 Bridge", click: () => bridge.stop() }
       : { label: "启动 Bridge", click: () => void bridge.start() },
     { label: "重启 Bridge", enabled: running, click: () => void bridge.restart() },
-    { type: "separator" },
-    {
-      label: "亮度",
-      submenu: BRIGHTNESS_STEPS.map(
-        (b): MenuItemConstructorOptions => ({
-          label: String(b),
-          type: "radio",
-          checked: s.brightness === b,
-          click: () => {
-            saveSettings({ brightness: b });
-            if (bridge.isRunning()) void bridge.restart();
-            buildMenu();
-          },
-        }),
-      ),
-    },
     { type: "separator" },
     {
       label: "安装 hooks",

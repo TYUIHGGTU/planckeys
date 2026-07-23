@@ -37,12 +37,13 @@ export const PLANCKEYS_LEFT_KEY_TO_LED: readonly number[] = [
 
 const nameLooksLikePlanckeys = (info: DeviceMatchInfo): boolean => {
   const label = `${info.name ?? ""} ${info.productName ?? ""}`;
-  return /planckeys/i.test(label);
+  // 兼容历史/新拼写：Planckeys、Planckeys、Planck Keys（大小写不敏感）。
+  return /planck\s*k?eys/i.test(label);
 };
 
 export const PLANCKEYS_LEFT_PROFILE: KeyboardProfile = {
   id: "planckeys-left",
-  displayName: "PlanckKeys Left",
+  displayName: "Planckeys Left",
   match: nameLooksLikePlanckeys,
   hidUsagePage: 0xff60,
   ledCount: 28,

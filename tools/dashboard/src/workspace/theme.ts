@@ -1,49 +1,49 @@
 import { createTheme, type MantineColorsTuple } from "@mantine/core";
 
 /**
- * 品牌主色：琥珀铜 / 焦糖（brass），呼应机械键盘的黄铜质感。
- * 刻意避开冷调靛蓝/紫，浅色态 ~#a86b25，深色态 ~#cd9549。
+ * 品牌信号色：琥珀（signal amber），呼应“精密仪器 / 蓝图标注”的高亮读数。
+ * 深色态取 shade 4 = #e8873a 作为主信号；浅色态取 shade 6 略深以保证白底可读。
  * 配合 autoContrast，填充按钮会自动挑选可读的深/浅文字。
  */
 const brand: MantineColorsTuple = [
-  "#faf4e8",
-  "#f1e5cf",
-  "#e6c9a1",
-  "#d8ac6f",
-  "#cd9549",
-  "#c07f2c",
-  "#a86b25",
-  "#895424",
-  "#6a3f1d",
-  "#4a2c14",
+  "#fdf2e6",
+  "#f6ddc2",
+  "#eec298",
+  "#e7a768",
+  "#e8873a",
+  "#dd7a2c",
+  "#c56a27",
+  "#9c541f",
+  "#743e18",
+  "#4d2910",
 ];
 
-/** 暖调石墨：深色态整体从冷蓝黑改为带一点棕的中性灰，去掉“科技蓝”味。 */
+/** 暖石墨：深色态映射到 mockup 的 paper/paper-2/hairline/ink（去掉科技蓝味）。 */
 const dark: MantineColorsTuple = [
-  "#d9d4cc",
-  "#b7b1a7",
-  "#948d82",
-  "#6c665d",
-  "#48433c",
-  "#37332d",
-  "#2a2723",
-  "#211e1a",
-  "#1a1714",
-  "#131110",
+  "#e9e5dc", // 0 · ink 文字
+  "#c9c4ba", // 1
+  "#7f838c", // 2 · graphite 次要文字 dimmed
+  "#5c5f66", // 3
+  "#2b2d33", // 4 · hairline 边框
+  "#26282d", // 5 · hover
+  "#202227", // 6 · paper-2 控件面
+  "#17181b", // 7 · paper 画布底
+  "#131417", // 8
+  "#0e0f11", // 9
 ];
 
-/** 暖调中性灰：浅色态的表面/边框/次要文字，带一点米色而非冷灰。 */
+/** 暖中性灰：浅色态的表面 / 边框 / 次要文字，带一点米色而非冷灰。 */
 const gray: MantineColorsTuple = [
-  "#f7f5f1",
-  "#efece6",
-  "#e5e1d9",
-  "#d7d2c8",
-  "#c3bcaf",
-  "#a39a8b",
-  "#837a6c",
-  "#625a4e",
-  "#453f36",
-  "#2a2620",
+  "#f6f4f0",
+  "#eeece7",
+  "#e4e1da",
+  "#d5d1c8",
+  "#c0bbb0",
+  "#a39d90",
+  "#7d7668",
+  "#5c554a",
+  "#3f3930",
+  "#26221c",
 ];
 
 export const theme = createTheme({
@@ -52,13 +52,20 @@ export const theme = createTheme({
   autoContrast: true,
   luminanceThreshold: 0.45,
   colors: { brand, dark, gray },
-  white: "#fbfaf7",
+  white: "#fbfaf8",
   black: "#1a1714",
-  defaultRadius: "md",
+  defaultRadius: "sm",
+  radius: {
+    xs: "2px",
+    sm: "3px",
+    md: "4px",
+    lg: "8px",
+    xl: "12px",
+  },
   fontFamily:
-    'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+    '"Space Grotesk", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
   fontFamilyMonospace:
-    'ui-monospace, SFMono-Regular, Menlo, "JetBrains Mono", monospace',
+    '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
   // 消灭 8-9px：全局字号下限提到 12px。
   fontSizes: {
     xs: "12px",

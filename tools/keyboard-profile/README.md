@@ -17,7 +17,7 @@ import {
   ledIndexForKeyPosition,
 } from "@planckeys/keyboard-profile";
 
-const profile = resolveProfile({ name: "PlanckKeys L" }) ?? DEFAULT_PROFILE;
+const profile = resolveProfile({ name: "Planckeys L" }) ?? DEFAULT_PROFILE;
 const led = ledIndexForKeyPosition(profile.keyPositionToLedIndex, 0);
 ```
 

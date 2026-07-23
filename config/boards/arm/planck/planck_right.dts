@@ -106,7 +106,7 @@ nice_view_spi: &spi2 {
 	// new_x = (4-1) - row, new_y = col。位置顺序同（覆盖后的）default_transform。
 	right_physical_layout: right_physical_layout {
 		compatible = "zmk,physical-layout";
-		display-name = "PlanckKeys Right";
+		display-name = "Planckeys Right";
 		transform = <&default_transform>;
 		kscan = <&kscan0>;
 		keys  //                     w   h    x    y   rot   rx   ry

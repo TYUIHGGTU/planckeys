@@ -440,7 +440,7 @@ UI 禁止直接 `call_rpc`，以便单测与日后换 bridge 代理（方案 D�
 
 - **不必**把前端编进 ZMK firmware CI；可选新增 workflow：`tools/console/**` 变更时跑 `npm ci && npm run typecheck && npm run build`。
 - `docs/README.md` / `led-web-control.md`：在落地后把「打开 `tools/led-web/index.html`」改为「`cd tools/console && npm run dev`」。
-- `tools/console/README.md`：写清双连接步骤、设备名 `PlanckKeys L`、usage page `0xFF60`、Serial 选 CDC 口。
+- `tools/console/README.md`：写清双连接步骤、设备名 `Planckeys L`、usage page `0xFF60`、Serial 选 CDC 口。
 
 ### 5.10 明确不做的范围（避免范围膨胀）
 
