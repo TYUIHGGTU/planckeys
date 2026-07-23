@@ -52,9 +52,14 @@ cd tools
 pnpm --filter @planckeys/desktop dev   # 或在根用 `pnpm desktop`
 ```
 
-> `dev` / `start` 脚本里带了 `env -u ELECTRON_RUN_AS_NODE`。这是因为 Cursor 等 Electron 宿主的
-> 集成终端会注入 `ELECTRON_RUN_AS_NODE=1`，会让 `electron .` 退化成纯 Node 运行（报
-> `Cannot read properties of undefined (reading 'requestSingleInstanceLock')`）。脚本已自动剥离。
+> `dev` / `start` 走 `scripts/run-dev.mjs` 启动器：
+> - 首次会把 Electron 的 app 包用 APFS clonefile 克隆成本地 `.dev/Planckeys.app`（写时复制、
+>   秒级、几乎不占额外磁盘），改掉 `Info.plist` 的 `CFBundleName` 并 ad-hoc 重签，让 Cmd-Tab /
+>   Dock / 菜单栏显示 **Planckeys** 而非 Electron（dev 下 `app.setName()` 改不动切换器/Dock 的名字）。
+>   源版本不变则后续启动直接复用，不再重建。打包正式 `.app`（路线图第四阶段）后即可弃用。
+> - 会自动剥离 `ELECTRON_RUN_AS_NODE`。Cursor 等 Electron 宿主的集成终端会注入
+>   `ELECTRON_RUN_AS_NODE=1`，否则 Electron 会退化成纯 Node 运行（报
+>   `Cannot read properties of undefined (reading 'requestSingleInstanceLock')`）。
 
 启动后顶部菜单栏出现一个点阵图标，点击即得菜单。默认**开机自启 + 登录后自动启动 bridge**。
 

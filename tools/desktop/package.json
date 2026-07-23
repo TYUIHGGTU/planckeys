@@ -1,13 +1,14 @@
 {
   "name": "@planckeys/desktop",
+  "productName": "Planckeys",
   "version": "0.1.0",
   "private": true,
   "description": "Planckeys 菜单栏 App：以子进程方式监管 agent-bridge 守护进程，支持开机自启，免去每次命令行启动（第一阶段）。",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "npm run build && env -u ELECTRON_RUN_AS_NODE electron .",
-    "dev": "npm run build && env -u ELECTRON_RUN_AS_NODE electron .",
+    "start": "npm run build && node scripts/run-dev.mjs",
+    "dev": "npm run build && node scripts/run-dev.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "engines": {

@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlanckKeys · A / Ortho 精密仪器（配色可切换）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "Space Grotesk", ui-sans-serif, -apple-system, "PingFang SC", sans-serif;
+  }
+
+  /* ============ PALETTES ============ */
+  /* Graphite（默认）：暖中性近黑 + 琥珀信号 */
+  .app[data-theme="graphite"] {
+    --ink:#e9e5dc; --paper:#17181b; --paper-2:#202227; --graphite:#7f838c; --hair:#2b2d33;
+    --signal:#e8873a; --grid:#3a5b70; --grid-alpha:0.16;
+    --key-face:#212329; --key-face-2:#1a1c20; --key-edge:#34373e; --key-shadow:#0e0f11; --key-hi:rgba(255,255,255,0.05);
+    --glow:#e8873a;
+  }
+  /* Blueprint：深藏青 + 青蓝网格 + 暖琥珀标注 */
+  .app[data-theme="blueprint"] {
+    --ink:#eaf1f6; --paper:#0e1a29; --paper-2:#16283c; --graphite:#7089a1; --hair:#213b56;
+    --signal:#ffb347; --grid:#4f9bd0; --grid-alpha:0.22;
+    --key-face:#15273b; --key-face-2:#102033; --key-edge:#25445f; --key-shadow:#081320; --key-hi:rgba(120,180,230,0.10);
+    --glow:#4f9bd0;
+  }
+  /* Modern Dolch：炭灰 + 芥末黄 + 墨青网格 */
+  .app[data-theme="modo"] {
+    --ink:#e7e4dc; --paper:#1b1d1c; --paper-2:#262a27; --graphite:#828678; --hair:#31352f;
+    --signal:#d9a441; --grid:#3f6b60; --grid-alpha:0.22;
+    --key-face:#262a27; --key-face-2:#1e211f; --key-edge:#373b35; --key-shadow:#101211; --key-hi:rgba(255,255,255,0.045);
+    --glow:#4c9a8f;
+  }
+  /* Nautilus：深海军蓝 + 烧橙 */
+  .app[data-theme="nautilus"] {
+    --ink:#eae6de; --paper:#122320; --paper-2:#1c322e; --graphite:#7d938a; --hair:#274842;
+    --signal:#e2703a; --grid:#3f8a7d; --grid-alpha:0.20;
+    --key-face:#1c322e; --key-face-2:#152925; --key-edge:#2c4c46; --key-shadow:#0a1512; --key-hi:rgba(160,220,205,0.07);
+    --glow:#e2703a;
+  }
+  /* Carbon：纯黑 + GMK Carbon 青 */
+  .app[data-theme="carbon"] {
+    --ink:#dfe3e2; --paper:#111314; --paper-2:#1b1e1f; --graphite:#767d7e; --hair:#282d2e;
+    --signal:#2fb6a8; --grid:#357a83; --grid-alpha:0.18;
+    --key-face:#1b1e1f; --key-face-2:#141617; --key-edge:#2c3233; --key-shadow:#080909; --key-hi:rgba(255,255,255,0.045);
+    --glow:#2fb6a8;
+  }
+  /* Ivory：做“对”的暖象牙 + 砖红 */
+  .app[data-theme="ivory"] {
+    --ink:#221f19; --paper:#e7e1d4; --paper-2:#dcd5c4; --graphite:#867d6c; --hair:#cabfa8;
+    --signal:#b8472e; --grid:#3a5b70; --grid-alpha:0.14;
+    --key-face:#f4efe4; --key-face-2:#e9e2d3; --key-edge:#cec3ad; --key-shadow:#c9bfa9; --key-hi:rgba(255,255,255,0.7);
+    --glow:#b8472e;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  .app {
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 54px 1fr 36px;
+    overflow: hidden;
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  /* ---- topbar ---- */
+  .topbar { display: flex; align-items: center; gap: 24px; padding: 0 22px; border-bottom: 1px solid var(--hair); background: var(--paper); }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand .mark { font-family: var(--mono); font-weight: 700; font-size: 13px; letter-spacing: 0.06em; color: var(--signal); }
+  .brand h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+  .brand .sub { font-family: var(--mono); font-size: 10px; color: var(--graphite); letter-spacing: 0.1em; }
+  .conns { display: flex; gap: 18px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; }
+  .conn { display: flex; align-items: center; gap: 7px; color: var(--graphite); text-transform: uppercase; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--graphite); }
+  .conn.on .dot { background: var(--signal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 18%, transparent); }
+  .conn.on { color: var(--ink); }
+
+  /* palette switcher */
+  .palettes { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .palettes .lab { font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--graphite); }
+  .chip { display: flex; align-items: center; gap: 7px; padding: 5px 9px 5px 6px; border: 1px solid var(--hair); border-radius: 3px; cursor: pointer; background: transparent; color: var(--graphite); font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; }
+  .chip:hover { border-color: var(--graphite); }
+  .chip.sel { border-color: var(--signal); color: var(--ink); }
+  .chip .sw { display: flex; border-radius: 2px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(128,128,128,0.25); }
+  .chip .sw i { width: 6px; height: 12px; }
+
+  /* ---- body ---- */
+  .body { display: grid; grid-template-columns: 168px 1fr 300px; grid-template-rows: 1fr 214px; grid-template-areas: "rail stage insp" "rail shelf insp"; min-height: 0; }
+
+  /* rail */
+  .rail { grid-area: rail; padding: 20px 16px; border-right: 1px solid var(--hair); }
+  .eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--graphite); }
+  .layers { margin-top: 16px; display: flex; flex-direction: column; }
+  .layer { position: relative; display: grid; grid-template-columns: 22px 1fr; align-items: center; gap: 10px; padding: 11px 8px; border-top: 1px solid var(--hair); cursor: pointer; font-size: 13px; color: var(--ink); }
+  .layer:last-child { border-bottom: 1px solid var(--hair); }
+  .layer .reg { font-family: var(--mono); font-size: 11px; color: var(--graphite); }
+  .layer.sel .reg { color: var(--signal); font-weight: 700; }
+  .layer.sel::before { content: ""; position: absolute; left: 0; width: 3px; height: 22px; background: var(--signal); }
+  .rail .foot { margin-top: 28px; font-family: var(--mono); font-size: 10px; color: var(--graphite); letter-spacing: 0.05em; line-height: 1.9; }
+
+  /* stage */
+  .stage { grid-area: stage; position: relative; padding: 34px 40px 40px 52px; overflow: hidden; }
+  .stage-label { position: absolute; top: 14px; left: 52px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; color: var(--graphite); }
+  .stage-label b { color: var(--ink); font-weight: 700; }
+  .ruler-x, .ruler-y { position: absolute; font-family: var(--mono); font-size: 9px; color: var(--graphite); }
+  .ruler-x { top: 30px; left: 52px; right: 40px; height: 16px; display: flex; }
+  .ruler-x i { flex: 1; border-left: 1px solid var(--hair); padding-left: 3px; }
+  .ruler-y { top: 52px; left: 30px; bottom: 40px; width: 16px; display: flex; flex-direction: column; }
+  .ruler-y i { flex: 1; border-top: 1px solid var(--hair); padding-top: 2px; text-align: right; padding-right: 3px; }
+  .canvas-wrap { position: absolute; inset: 52px 40px 40px 52px;
+    background-image:
+      linear-gradient(color-mix(in srgb, var(--grid) calc(var(--grid-alpha) * 100%), transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in srgb, var(--grid) calc(var(--grid-alpha) * 100%), transparent) 1px, transparent 1px);
+    background-size: 27px 27px; display: grid; place-content: center; }
+  .kb { display: grid; grid-template-columns: repeat(6, 60px); grid-auto-rows: 60px; gap: 6px; }
+  .key {
+    border: 1px solid var(--key-edge); border-radius: 4px;
+    background: linear-gradient(180deg, var(--key-face), var(--key-face-2));
+    display: grid; place-content: center; font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--ink);
+    box-shadow: inset 0 1px 0 var(--key-hi), 0 2px 4px color-mix(in srgb, var(--key-shadow) 70%, transparent);
+    cursor: pointer; position: relative;
+  }
+  .key .u { position: absolute; top: 3px; left: 4px; font-size: 8px; color: var(--graphite); }
+  .key.mod { color: var(--graphite); background: var(--paper-2); }
+  .key.sel { border-color: var(--signal); color: var(--signal); box-shadow: 0 0 0 1px var(--signal), 0 0 16px color-mix(in srgb, var(--signal) 35%, transparent); }
+  .planck { position: absolute; right: 16px; bottom: 14px; font-family: var(--mono); font-size: 10px; color: var(--graphite); letter-spacing: 0.04em; text-align: right; line-height: 1.5; }
+  .planck b { color: var(--ink); }
+  .zoom { position: absolute; right: 16px; top: 14px; display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--graphite); }
+  .zoom button { width: 22px; height: 22px; border: 1px solid var(--hair); background: var(--paper); color: var(--ink); cursor: pointer; border-radius: 2px; font-family: var(--mono); }
+
+  /* inspector */
+  .insp { grid-area: insp; grid-row: 1 / 3; border-left: 1px solid var(--hair); padding: 20px 18px; }
+  .insp .kv { display: grid; grid-template-columns: 76px 1fr; gap: 6px 12px; font-size: 12px; margin-top: 14px; }
+  .insp .kv dt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--graphite); align-self: center; }
+  .insp .kv dd { margin: 0; font-family: var(--mono); font-size: 13px; color: var(--ink); }
+  .insp .big { font-family: var(--mono); font-size: 34px; font-weight: 700; margin-top: 6px; color: var(--signal); }
+  .insp .btn { margin-top: 20px; width: 100%; padding: 9px; border: 1px solid var(--signal); background: var(--signal); color: var(--paper); font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; border-radius: 2px; }
+  .insp .btn.ghost { background: transparent; color: var(--ink); border-color: var(--hair); margin-top: 8px; }
+
+  /* shelf */
+  .shelf { grid-area: shelf; border-top: 1px solid var(--hair); padding: 14px 40px 16px 52px; display: flex; flex-direction: column; min-height: 0; }
+  .shelf-head { display: flex; align-items: baseline; gap: 16px; }
+  .tabs { display: flex; gap: 2px; margin-top: 12px; font-family: var(--mono); font-size: 11px; }
+  .tabs span { padding: 6px 11px; color: var(--graphite); cursor: pointer; letter-spacing: 0.04em; border-bottom: 2px solid transparent; }
+  .tabs span.sel { color: var(--ink); border-bottom-color: var(--signal); }
+  .search { margin-left: auto; align-self: center; font-family: var(--mono); font-size: 11px; color: var(--graphite); border: 1px solid var(--hair); padding: 6px 10px; border-radius: 2px; }
+  .cand-grid { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); grid-auto-rows: 42px; gap: 7px; overflow: hidden; }
+  .cand { border: 1px solid var(--key-edge); border-radius: 3px; background: linear-gradient(180deg, var(--key-face), var(--key-face-2)); display: grid; place-content: center; font-family: var(--mono); font-size: 11px; color: var(--ink); cursor: grab; box-shadow: inset 0 1px 0 var(--key-hi); }
+  .cand:hover { border-color: var(--signal); color: var(--signal); }
+
+  /* ---- underglow bar (no vertical ticks) ---- */
+  .underglow { position: relative; background: var(--paper); overflow: hidden; }
+  .underglow::before { /* ambient bleed upward */
+    content: ""; position: absolute; left: 0; right: 0; top: -46px; height: 46px; pointer-events: none;
+    background: linear-gradient(90deg,#ff3b3b,#ff8a3d,#ffd43b,#3ddc84,#16d0d0,#3d7bff,#7d5bff,#ff4fa3,#ff3b3b);
+    filter: blur(30px); opacity: 0.14;
+    -webkit-mask-image: linear-gradient(0deg,#000,transparent); mask-image: linear-gradient(0deg,#000,transparent);
+  }
+  .underglow .spectrum { position: absolute; inset: 0;
+    background: linear-gradient(90deg,#ff3b3b,#ff8a3d,#ffd43b,#3ddc84,#16d0d0,#3d7bff,#7d5bff,#ff4fa3,#ff3b3b);
+    opacity: 0.9;
+    -webkit-mask-image: linear-gradient(0deg,#000 0%,#000 55%,transparent 100%); mask-image: linear-gradient(0deg,#000 0%,#000 55%,transparent 100%);
+  }
+  .underglow .ug-label { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 20px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+  .underglow .ug-label b { font-weight: 700; }
+  .underglow .ug-right { position: absolute; right: 20px; top: 0; bottom: 0; display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+</style>
+</head>
+<body>
+<div class="app" data-theme="graphite">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">h/</span>
+      <h1>PlanckKeys</h1>
+      <span class="sub">keymap · lighting workbench</span>
+    </div>
+    <div class="conns">
+      <span class="conn on"><span class="dot"></span> studio</span>
+      <span class="conn on"><span class="dot"></span> led</span>
+    </div>
+    <div class="palettes">
+      <span class="lab">palette</span>
+      <div id="chips" style="display:flex;gap:6px"></div>
+    </div>
+  </header>
+
+  <div class="body">
+    <aside class="rail">
+      <span class="eyebrow">layers</span>
+      <div class="layers" id="layers"></div>
+      <div class="foot">planck_left<br />4×12 ortho<br />zmk · 0xff60</div>
+    </aside>
+
+    <section class="stage">
+      <div class="stage-label"><b>PlanckKeys L</b> · 默认层 <span style="color:var(--signal)">●</span> saved</div>
+      <div class="zoom"><button>−</button> 100% <button>+</button></div>
+      <div class="ruler-x" id="rx"></div>
+      <div class="ruler-y" id="ry"></div>
+      <div class="canvas-wrap"><div class="kb" id="kb"></div></div>
+      <div class="planck"><b>h</b> = 6.62607015 × 10⁻³⁴ J·s<br />profile · planck_left · rev.b</div>
+    </section>
+
+    <aside class="insp">
+      <span class="eyebrow">selected key</span>
+      <div class="kv" style="margin-top:6px"><dt>position</dt><dd>r2 · c4</dd></div>
+      <div class="big">F</div>
+      <dl class="kv">
+        <dt>behavior</dt><dd>&amp;kp</dd>
+        <dt>param</dt><dd>F</dd>
+        <dt>usage</dt><dd>0x09</dd>
+        <dt>layer</dt><dd>0 · base</dd>
+      </dl>
+      <button class="btn">重新分配</button>
+      <button class="btn ghost">高级 behavior…</button>
+    </aside>
+
+    <section class="shelf">
+      <div class="shelf-head">
+        <span class="eyebrow">candidates</span>
+        <div class="tabs"><span class="sel">基础</span><span>字母</span><span>导航</span><span>数字</span><span>媒体</span><span>层</span><span>系统</span></div>
+        <span class="search">search behaviors…</span>
+      </div>
+      <div class="cand-grid" id="cands"></div>
+    </section>
+  </div>
+
+  <footer class="underglow">
+    <div class="spectrum"></div>
+    <div class="ug-label"><b>UNDERGLOW</b>&nbsp;· scheme rainbow</div>
+    <div class="ug-right"><span>bright 80</span><span>speed 4</span></div>
+  </footer>
+</div>
+
+<script>
+  const app = document.querySelector(".app");
+
+  const palettes = [
+    ["graphite","Graphite",["#17181b","#212329","#e8873a"]],
+    ["blueprint","Blueprint",["#0e1a29","#15273b","#ffb347"]],
+    ["modo","Mod Dolch",["#1b1d1c","#262a27","#d9a441"]],
+    ["nautilus","Nautilus",["#122320","#1c322e","#e2703a"]],
+    ["carbon","Carbon",["#111314","#1b1e1f","#2fb6a8"]],
+    ["ivory","Ivory",["#e7e1d4","#f4efe4","#b8472e"]],
+  ];
+  function renderChips(){
+    document.getElementById("chips").innerHTML = palettes.map(p=>{
+      const sel = app.dataset.theme===p[0] ? " sel" : "";
+      const sw = p[2].map(c=>`<i style="background:${c}"></i>`).join("");
+      return `<button class="chip${sel}" data-t="${p[0]}"><span class="sw">${sw}</span>${p[1]}</button>`;
+    }).join("");
+    document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ app.dataset.theme=b.dataset.t; renderChips(); });
+  }
+  renderChips();
+
+  const layers = [["00","默认层"],["01","功能层 1"],["02","功能层 2"],["03","功能层 3"]];
+  document.getElementById("layers").innerHTML = layers.map((l,i)=>
+    `<div class="layer${i===0?' sel':''}"><span class="reg">${l[0]}</span><span>${l[1]}</span></div>`).join("");
+
+  const keys = ["Esc","Q","W","E","R","T","Tab","A","S","D","F","G","Sft","Z","X","C","V","B","Ctl","Fn","Cmd","Spc","Spc","Ly"];
+  const mods = new Set(["Esc","Tab","Sft","Ctl","Fn","Cmd","Ly"]);
+  const sel = 10;
+  document.getElementById("kb").innerHTML = keys.map((k,i)=>{
+    const cls=["key"]; if(mods.has(k))cls.push("mod"); if(i===sel)cls.push("sel");
+    const u = Math.floor(i/6)+"."+(i%6);
+    return `<div class="${cls.join(' ')}"><span class="u">${u}</span>${k}</div>`;
+  }).join("");
+
+  document.getElementById("rx").innerHTML = Array.from({length:6},(_,i)=>`<i>${i}u</i>`).join("");
+  document.getElementById("ry").innerHTML = Array.from({length:4},(_,i)=>`<i>${i}</i>`).join("");
+
+  const cands = ["Esc","1 !","2 @","3 #","4 $","5 %","6 ^","7 &","8 *","9 (","0 )","- _","= +","Bksp","Tab","[ {","] }","\\ |","; :","' \"","Ent","Del","Home","End"];
+  document.getElementById("cands").innerHTML = cands.map(c=>`<div class="cand">${c}</div>`).join("");
+</script>
+</body>
+</html>

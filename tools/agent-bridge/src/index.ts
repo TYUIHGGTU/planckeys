@@ -119,9 +119,15 @@ const main = (): void => {
     }
   };
 
-  hid.start();
   // Firmware stays in Solid; breathe/blink are host-side per-pixel brightness.
-  setTimeout(() => hid.setConfig(LedMode.Solid, config.brightness, 1), 500);
+  // Applied on every (re)connect so brightness/mode survive bridge restarts and
+  // USB hot-plugs; also repaint the current frame instead of leaving it blank.
+  hid.onConnect = (): void => {
+    hid.setConfig(LedMode.Solid, config.brightness, 1);
+    renderAndPush({ quiet: true });
+    syncAnim();
+  };
+  hid.start();
 
   source.events.on("open", () => log.info("Codex source connected."));
 

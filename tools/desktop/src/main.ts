@@ -12,10 +12,10 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  // 包名改为 scope（@planckeys/desktop）后，固定 app 名与 userData 路径，避免路径里出现
-  // "@planckeys/desktop" 的斜杠，并保持与旧版一致的设置/日志/登录项位置。
+  // 展示名统一为 Planckeys（菜单栏 / Dock / 关于面板都会读取 app.name）。
+  // userData 路径保持旧值 planckeys-desktop，避免升级后设置/日志/登录项位置漂移；
   // 注意：userData 由原生早期解析，仅靠 setName 太晚，必须显式 setPath。
-  app.setName("planckeys-desktop");
+  app.setName("Planckeys");
   app.setPath("userData", join(app.getPath("appData"), "planckeys-desktop"));
 
   app.on("second-instance", () => {

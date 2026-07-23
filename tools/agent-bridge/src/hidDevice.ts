@@ -28,6 +28,13 @@ export class HidDevice {
   private matchedProfile: KeyboardProfile | null = null;
   private missingProfileLogged = false;
 
+  /**
+   * Fired right after a device successfully opens (initial connect and every
+   * reconnect). The owner uses it to (re)apply the global mode/brightness and
+   * repaint the current frame, so state survives bridge restarts / hot-plugs.
+   */
+  onConnect?: () => void;
+
   constructor(
     private readonly reconnectMs: number,
     private readonly dryRun = false,
@@ -121,6 +128,14 @@ export class HidDevice {
       this.device = device;
       this.matchedProfile = found.profile;
       log.info(`HID connected (profile=${found.profile.id}).`);
+      // Re-apply global config + repaint on every (re)connect. Doing this here
+      // (rather than a one-shot timer at startup) keeps brightness/mode and the
+      // current frame correct across bridge restarts and USB hot-plugs.
+      try {
+        this.onConnect?.();
+      } catch (err) {
+        log.warn("onConnect handler failed:", (err as Error).message);
+      }
     } catch (e) {
       log.warn("Failed to open HID device:", (e as Error).message);
       this.scheduleReconnect();
