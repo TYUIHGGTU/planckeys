@@ -1,3 +1,4 @@
+import { useEffect, type MouseEvent } from "react";
 import {
   ActionIcon,
   Button,
@@ -6,6 +7,7 @@ import {
   Popover,
   Select,
   Stack,
+  Switch,
   Text,
   Tooltip,
 } from "@mantine/core";
@@ -23,18 +25,19 @@ interface Props {
   studio: StudioController;
   selectedKey: number | null;
   onSelectKey: (position: number) => void;
+  onClearSelection: () => void;
   onAssign: (position: number, binding: Binding) => void;
   advancedOpen: boolean;
   onAdvancedOpen: (open: boolean) => void;
 }
 
-const SYNC_META: Record<StudioSyncState, { label: string; dim: boolean }> = {
-  idle: { label: "等待连接", dim: true },
-  applying: { label: "正在应用", dim: false },
-  pending: { label: "等待自动保存", dim: false },
-  saving: { label: "正在保存", dim: false },
-  saved: { label: "saved", dim: false },
-  error: { label: "同步失败", dim: false },
+const SYNC_META: Record<StudioSyncState, { label: string; color: string; dim: boolean }> = {
+  idle: { label: "等待连接", color: "var(--graphite)", dim: true },
+  applying: { label: "正在应用", color: "#ffd43b", dim: false },
+  pending: { label: "等待自动保存", color: "#ff8a3d", dim: false },
+  saving: { label: "正在保存", color: "#3d7bff", dim: false },
+  saved: { label: "已保存", color: "#3ddc84", dim: false },
+  error: { label: "同步失败", color: "#ff3b3b", dim: false },
 };
 
 const layerTitle = (name: string | undefined, index: number): string =>
@@ -44,6 +47,7 @@ export function KeyboardStage({
   studio,
   selectedKey,
   onSelectKey,
+  onClearSelection,
   onAssign,
   advancedOpen,
   onAdvancedOpen,
@@ -70,21 +74,90 @@ export function KeyboardStage({
     ? Math.max(1, Math.round(Math.max(0, ...layout.keys.map((k) => k.y + k.height)) / 100))
     : 4;
   const sync = SYNC_META[studio.syncState];
+  const syncLabel =
+    studio.syncState === "pending" && !studio.autoSaveEnabled
+      ? "待保存"
+      : sync.label;
+
+  const { undo, canUndo } = studio;
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const isUndo =
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "z";
+      if (!isUndo || !canUndo) return;
+      const target = event.target as HTMLElement | null;
+      // 输入框内交给浏览器原生撤销。
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      void undo();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undo, canUndo]);
+
+  const handleCenterClick = (event: MouseEvent<HTMLDivElement>) => {
+    // 点到按键则交给按键自身处理；点空白处取消选中。
+    if ((event.target as HTMLElement).closest(".kb-key")) return;
+    onClearSelection();
+  };
 
   return (
     <section className="keyboard-stage">
       <div className="stage-label">
         <b>{layerTitle(layer?.name, studio.selectedLayer)}</b>
-        <Tooltip
-          label={studio.syncError ?? sync.label}
-          withArrow
-          disabled={studio.syncState !== "error"}
-        >
-          <span className="stage-saved" style={sync.dim ? { opacity: 0.5 } : undefined}>
-            <i />
-            {sync.label}
+        <Tooltip label={studio.syncError ?? syncLabel} withArrow>
+          <span
+            className="stage-saved"
+            style={{ opacity: sync.dim ? 0.5 : 1 }}
+            aria-label={syncLabel}
+          >
+            <i style={{ background: sync.color }} />
           </span>
         </Tooltip>
+        {showKeyboard && (
+          <Group gap={8} wrap="nowrap" className="stage-actions">
+            <Tooltip label="撤销上一步改键 (⌘/Ctrl+Z)" withArrow>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={() => void studio.undo()}
+                disabled={!studio.canUndo}
+                aria-label="撤销改键"
+              >
+                ↶
+              </ActionIcon>
+            </Tooltip>
+            <Switch
+              size="xs"
+              checked={studio.autoSaveEnabled}
+              onChange={(event) =>
+                studio.setAutoSaveEnabled(event.currentTarget.checked)
+              }
+              label="自动保存"
+              aria-label="自动保存开关"
+            />
+            {!studio.autoSaveEnabled && (
+              <Button
+                size="compact-xs"
+                variant="filled"
+                onClick={() => void studio.save()}
+                disabled={!studio.unsaved || studio.syncState === "saving"}
+              >
+                保存
+              </Button>
+            )}
+          </Group>
+        )}
         {layoutOptions.length > 1 && (
           <Select
             size="xs"
@@ -111,7 +184,11 @@ export function KeyboardStage({
         ))}
       </div>
 
-      <div className="keyboard-center" ref={scale.containerRef}>
+      <div
+        className="keyboard-center"
+        ref={scale.containerRef}
+        onClick={handleCenterClick}
+      >
         {showKeyboard ? (
           <PhysicalKeyboard
             layout={layout}

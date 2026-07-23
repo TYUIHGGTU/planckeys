@@ -28,6 +28,11 @@ export function Workspace({ led, studio, theme, hint }: Props) {
     void studio.applyBinding(position, binding);
   };
 
+  const clearSelection = () => {
+    setSelectedKey(null);
+    setAdvancedOpen(false);
+  };
+
   return (
     <div className="ws-app">
       <TopBar led={led} studio={studio} theme={theme} />
@@ -45,13 +50,7 @@ export function Workspace({ led, studio, theme, hint }: Props) {
             { "--candidate-height": `${candidateSize.height}px` } as CSSProperties
           }
         >
-          <LayerRail
-            studio={studio}
-            onLayerChange={() => {
-              setSelectedKey(null);
-              setAdvancedOpen(false);
-            }}
-          />
+          <LayerRail studio={studio} onLayerChange={clearSelection} />
           <KeyboardStage
             studio={studio}
             selectedKey={selectedKey}
@@ -59,6 +58,7 @@ export function Workspace({ led, studio, theme, hint }: Props) {
               setSelectedKey(position);
               setAdvancedOpen(false);
             }}
+            onClearSelection={clearSelection}
             onAssign={assignBinding}
             advancedOpen={advancedOpen}
             onAdvancedOpen={setAdvancedOpen}

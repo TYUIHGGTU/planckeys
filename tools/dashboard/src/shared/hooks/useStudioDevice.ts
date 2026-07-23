@@ -48,6 +48,10 @@ export interface StudioController {
   unsaved: boolean;
   syncState: StudioSyncState;
   syncError: string | null;
+  /** 自动保存开关，默认开启；关闭后改键仅缓存，需手动 save()。 */
+  autoSaveEnabled: boolean;
+  /** 是否存在可撤销的改键。 */
+  canUndo: boolean;
 
   /** 连接键盘：弹出选择器（浏览器原生 / 桌面端对话框）让用户选设备。 */
   connect: (port?: SerialPort) => Promise<void>;
@@ -57,9 +61,19 @@ export interface StudioController {
   applyBinding: (keyPosition: number, binding: Binding) => Promise<void>;
   save: () => Promise<void>;
   discard: () => Promise<void>;
+  setAutoSaveEnabled: (enabled: boolean) => void;
+  undo: () => Promise<void>;
 }
 
 const AUTO_SAVE_DELAY_MS = 500;
+const MAX_UNDO_HISTORY = 100;
+
+/** 一次可撤销改键的快照：改动前该键位的绑定。 */
+interface UndoEntry {
+  layerId: number;
+  keyPosition: number;
+  prevBinding: Binding;
+}
 
 const warnIfLayoutMismatch = (
   profile: KeyboardProfile | null,
@@ -84,6 +98,8 @@ export const useStudioDevice = (): StudioController => {
   const unsavedRef = useRef(false);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
   const saveTimerRef = useRef<number | null>(null);
+  const autoSaveEnabledRef = useRef(true);
+  const undoStackRef = useRef<UndoEntry[]>([]);
 
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -103,6 +119,8 @@ export const useStudioDevice = (): StudioController => {
   const [unsaved, setUnsavedState] = useState(false);
   const [syncState, setSyncState] = useState<StudioSyncState>("idle");
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [autoSaveEnabled, setAutoSaveEnabledState] = useState(true);
+  const [canUndo, setCanUndo] = useState(false);
 
   const setKeymap = useCallback((next: KeymapData | null) => {
     keymapRef.current = next;
@@ -112,6 +130,18 @@ export const useStudioDevice = (): StudioController => {
   const setUnsaved = useCallback((next: boolean) => {
     unsavedRef.current = next;
     setUnsavedState(next);
+  }, []);
+
+  const resetUndo = useCallback(() => {
+    undoStackRef.current = [];
+    setCanUndo(false);
+  }, []);
+
+  const pushUndo = useCallback((entry: UndoEntry) => {
+    const next = [...undoStackRef.current, entry];
+    if (next.length > MAX_UNDO_HISTORY) next.shift();
+    undoStackRef.current = next;
+    setCanUndo(true);
   }, []);
 
   const enqueue = useCallback((operation: () => Promise<void>): Promise<void> => {
@@ -154,11 +184,27 @@ export const useStudioDevice = (): StudioController => {
   const scheduleAutoSave = useCallback(() => {
     clearSaveTimer();
     setSyncState("pending");
+    // 自动保存关闭时只标记「待保存」，等待用户手动 save()。
+    if (!autoSaveEnabledRef.current) return;
     saveTimerRef.current = window.setTimeout(() => {
       saveTimerRef.current = null;
       void enqueue(performSave);
     }, AUTO_SAVE_DELAY_MS);
   }, [clearSaveTimer, enqueue, performSave]);
+
+  const setAutoSaveEnabled = useCallback(
+    (enabled: boolean) => {
+      autoSaveEnabledRef.current = enabled;
+      setAutoSaveEnabledState(enabled);
+      // 重新开启时若有未保存改动，立即安排一次保存。
+      if (enabled && unsavedRef.current) {
+        scheduleAutoSave();
+      } else if (!enabled) {
+        clearSaveTimer();
+      }
+    },
+    [clearSaveTimer, scheduleAutoSave],
+  );
 
   const connect = useCallback(async (port?: SerialPort) => {
     setLoading(true);
@@ -191,6 +237,7 @@ export const useStudioDevice = (): StudioController => {
       selectedLayerRef.current = 0;
       setSelectedLayer(0);
       setUnsaved(false);
+      resetUndo();
       setSyncState("saved");
       setConnected(true);
       pushLog(
@@ -212,7 +259,7 @@ export const useStudioDevice = (): StudioController => {
     } finally {
       setLoading(false);
     }
-  }, [setKeymap, setUnsaved]);
+  }, [resetUndo, setKeymap, setUnsaved]);
 
   const disconnect = useCallback(async () => {
     clearSaveTimer();
@@ -229,10 +276,11 @@ export const useStudioDevice = (): StudioController => {
     setLayouts(null);
     setBehaviors([]);
     setUnsaved(false);
+    resetUndo();
     setSyncState("idle");
     setSyncError(null);
     pushLog("已断开 Studio");
-  }, [clearSaveTimer, performSave, setKeymap, setUnsaved]);
+  }, [clearSaveTimer, performSave, resetUndo, setKeymap, setUnsaved]);
 
   const selectLayer = useCallback((index: number) => {
     selectedLayerRef.current = index;
@@ -292,6 +340,8 @@ export const useStudioDevice = (): StudioController => {
           return;
         }
 
+        const prevBinding = layer.bindings[keyPosition];
+
         setSyncState("applying");
         setSyncError(null);
         try {
@@ -313,6 +363,13 @@ export const useStudioDevice = (): StudioController => {
               : item,
           );
           setKeymap({ ...currentKeymap, layers: nextLayers });
+          if (prevBinding) {
+            pushUndo({
+              layerId: layer.id,
+              keyPosition,
+              prevBinding: { ...prevBinding },
+            });
+          }
           setUnsaved(true);
           pushLog(`改键 pos=${keyPosition} -> behavior ${binding.behaviorId}`);
           scheduleAutoSave();
@@ -321,6 +378,64 @@ export const useStudioDevice = (): StudioController => {
           setSyncState("error");
           setSyncError(message);
           pushLog(`改键失败 pos=${keyPosition}: ${message}`);
+        }
+      }),
+    [enqueue, pushUndo, scheduleAutoSave, setKeymap, setUnsaved],
+  );
+
+  const undo = useCallback(
+    (): Promise<void> =>
+      enqueue(async () => {
+        const connection = connRef.current;
+        const currentKeymap = keymapRef.current;
+        const entry = undoStackRef.current[undoStackRef.current.length - 1];
+        if (!connection || !currentKeymap || !entry) return;
+        const layerIndex = currentKeymap.layers.findIndex(
+          (item) => item.id === entry.layerId,
+        );
+        if (layerIndex < 0) {
+          // 目标层已不存在（如切换物理布局），丢弃这条历史。
+          undoStackRef.current = undoStackRef.current.slice(0, -1);
+          setCanUndo(undoStackRef.current.length > 0);
+          return;
+        }
+
+        setSyncState("applying");
+        setSyncError(null);
+        try {
+          const result = await setLayerBinding(connection.conn, {
+            layerId: entry.layerId,
+            keyPosition: entry.keyPosition,
+            binding: entry.prevBinding,
+          });
+          if (result !== "ok") throw new Error("behavior、参数或键位无效");
+
+          const nextLayers = currentKeymap.layers.map((item, i) =>
+            i === layerIndex
+              ? {
+                  ...item,
+                  bindings: item.bindings.map((current, position) =>
+                    position === entry.keyPosition
+                      ? { ...entry.prevBinding }
+                      : current,
+                  ),
+                }
+              : item,
+          );
+          setKeymap({ ...currentKeymap, layers: nextLayers });
+          undoStackRef.current = undoStackRef.current.slice(0, -1);
+          setCanUndo(undoStackRef.current.length > 0);
+          // 切到该键所在层，让撤销结果可见。
+          selectedLayerRef.current = layerIndex;
+          setSelectedLayer(layerIndex);
+          setUnsaved(true);
+          pushLog(`撤销改键 pos=${entry.keyPosition}`);
+          scheduleAutoSave();
+        } catch (error) {
+          const message = (error as Error).message || String(error);
+          setSyncState("error");
+          setSyncError(message);
+          pushLog(`撤销失败 pos=${entry.keyPosition}: ${message}`);
         }
       }),
     [enqueue, scheduleAutoSave, setKeymap, setUnsaved],
@@ -337,6 +452,7 @@ export const useStudioDevice = (): StudioController => {
         const nextKeymap = await getKeymap(connection.conn);
         setKeymap(nextKeymap);
         setUnsaved(false);
+        resetUndo();
         setSyncState("saved");
         setSyncError(null);
         pushLog("已丢弃未保存改键");
@@ -347,7 +463,7 @@ export const useStudioDevice = (): StudioController => {
         pushLog("丢弃失败: " + message);
       }
     });
-  }, [clearSaveTimer, enqueue, setKeymap, setUnsaved]);
+  }, [clearSaveTimer, enqueue, resetUndo, setKeymap, setUnsaved]);
 
   useEffect(
     () => () => {
@@ -372,6 +488,8 @@ export const useStudioDevice = (): StudioController => {
       unsaved,
       syncState,
       syncError,
+      autoSaveEnabled,
+      canUndo,
       connect,
       disconnect,
       selectLayer,
@@ -379,6 +497,8 @@ export const useStudioDevice = (): StudioController => {
       applyBinding,
       save,
       discard,
+      setAutoSaveEnabled,
+      undo,
     }),
     [
       connected,
@@ -393,6 +513,8 @@ export const useStudioDevice = (): StudioController => {
       unsaved,
       syncState,
       syncError,
+      autoSaveEnabled,
+      canUndo,
       connect,
       disconnect,
       selectLayer,
@@ -400,6 +522,8 @@ export const useStudioDevice = (): StudioController => {
       applyBinding,
       save,
       discard,
+      setAutoSaveEnabled,
+      undo,
     ],
   );
 };
