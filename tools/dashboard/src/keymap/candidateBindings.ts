@@ -31,10 +31,16 @@ const findBehavior = (
   });
 };
 
+/** 查找 &kp（key press）行为，供传统布局按需生成 binding。 */
+export const findKpBehavior = (
+  behaviors: BehaviorSummary[],
+): BehaviorSummary | undefined =>
+  findBehavior(behaviors, ["kp", "key press", "keypress"]);
+
 const usageCandidates = (
   behaviors: BehaviorSummary[],
 ): BindingCandidate[] => {
-  const kp = findBehavior(behaviors, ["kp", "key press", "keypress"]);
+  const kp = findKpBehavior(behaviors);
   if (!kp) return [];
   return COMMON_KB_USAGES.map((usage) => ({
     id: `kp-${usage.value}`,

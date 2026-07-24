@@ -696,6 +696,33 @@ body.is-resizing {
   gap: 7px;
 }
 
+/* 传统键盘布局：所有键位统一正方形，组间用 gap 还原分区留白 */
+.candidate-layout {
+  --layout-key: 44px;
+  padding: 6px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+}
+
+.candidate-layout-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.candidate-layout-gap {
+  flex: 0 0 auto;
+}
+
+.candidate-key--square {
+  width: var(--layout-key, 44px);
+  height: var(--layout-key, 44px);
+  flex: 0 0 auto;
+  font-size: 10px;
+}
+
 .candidate-key {
   min-width: 0;
   padding: 4px;

@@ -11,9 +11,15 @@ import {
   BINDING_DRAG_TYPE,
   buildBindingCandidates,
   candidateGroups,
+  findKpBehavior,
   serializeBinding,
   type BindingCandidate,
 } from "../keymap/candidateBindings";
+import {
+  BASIC_LAYOUT_ROWS,
+  BASIC_LAYOUT_TAB,
+  isGap,
+} from "../keymap/basicLayout";
 import type { StudioController } from "../shared/hooks/useStudioDevice";
 import type { CandidateHeightController } from "./useCandidateHeight";
 
@@ -21,10 +27,12 @@ function CandidateButton({
   candidate,
   selectedKey,
   onApply,
+  square,
 }: {
   candidate: BindingCandidate;
   selectedKey: number | null;
   onApply: (binding: Binding) => void;
+  square?: boolean;
 }) {
   const onDragStart = (event: DragEvent<HTMLButtonElement>) => {
     event.dataTransfer.setData(
@@ -42,7 +50,7 @@ function CandidateButton({
     >
       <button
         type="button"
-        className="candidate-key"
+        className={square ? "candidate-key candidate-key--square" : "candidate-key"}
         draggable
         onDragStart={onDragStart}
         onClick={() => {
@@ -77,7 +85,14 @@ export function CandidatePanel({ studio, selectedKey, onApply, size }: Props) {
       ),
     [studio.behaviors, studio.keymap?.layers.length],
   );
-  const groups = useMemo(() => candidateGroups(candidates), [candidates]);
+  const kp = useMemo(
+    () => findKpBehavior(studio.behaviors),
+    [studio.behaviors],
+  );
+  const groups = useMemo(() => {
+    const base = candidateGroups(candidates);
+    return kp ? [BASIC_LAYOUT_TAB, ...base] : base;
+  }, [candidates, kp]);
   const [group, setGroup] = useState("");
   const [query, setQuery] = useState("");
 
@@ -144,26 +159,62 @@ export function CandidatePanel({ studio, selectedKey, onApply, size }: Props) {
       )}
 
       <ScrollArea className="candidate-scroll" type="auto" offsetScrollbars>
-        <div className="candidate-grid">
-          {visible.map((candidate) => (
-            <CandidateButton
-              key={candidate.id}
-              candidate={candidate}
-              selectedKey={selectedKey}
-              onApply={onApply}
-            />
-          ))}
-          {studio.connected && visible.length === 0 && (
-            <Text size="xs" c="dimmed" className="candidate-empty">
-              没有匹配的候选键。
-            </Text>
-          )}
-          {!studio.connected && (
-            <Text size="xs" c="dimmed" className="candidate-empty">
-              连接 Studio 后会根据固件 behaviors 生成真实候选项。
-            </Text>
-          )}
-        </div>
+        {!normalizedQuery && group === BASIC_LAYOUT_TAB && kp ? (
+          <div className="candidate-layout">
+            {BASIC_LAYOUT_ROWS.map((row, rowIndex) => (
+              <div className="candidate-layout-row" key={rowIndex}>
+                {row.map((item, itemIndex) =>
+                  isGap(item) ? (
+                    <span
+                      key={`gap-${rowIndex}-${itemIndex}`}
+                      className="candidate-layout-gap"
+                      style={{ flexBasis: `calc(var(--layout-key) * ${item.gap})` }}
+                    />
+                  ) : (
+                    <CandidateButton
+                      key={`${rowIndex}-${item.value}-${itemIndex}`}
+                      square
+                      candidate={{
+                        id: `layout-${item.value}`,
+                        label: item.label,
+                        group: BASIC_LAYOUT_TAB,
+                        search: "",
+                        binding: {
+                          behaviorId: kp.id,
+                          param1: item.value,
+                          param2: 0,
+                        },
+                      }}
+                      selectedKey={selectedKey}
+                      onApply={onApply}
+                    />
+                  ),
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="candidate-grid">
+            {visible.map((candidate) => (
+              <CandidateButton
+                key={candidate.id}
+                candidate={candidate}
+                selectedKey={selectedKey}
+                onApply={onApply}
+              />
+            ))}
+            {studio.connected && visible.length === 0 && (
+              <Text size="xs" c="dimmed" className="candidate-empty">
+                没有匹配的候选键。
+              </Text>
+            )}
+            {!studio.connected && (
+              <Text size="xs" c="dimmed" className="candidate-empty">
+                连接 Studio 后会根据固件 behaviors 生成真实候选项。
+              </Text>
+            )}
+          </div>
+        )}
       </ScrollArea>
     </section>
   );
